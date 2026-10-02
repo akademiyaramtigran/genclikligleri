@@ -1,0 +1,156 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { CalendarDays, MapPin, Phone, User2, Users } from "lucide-react";
+import { db } from "@/lib/db";
+import { sportDef, GENDERS, PLAYER_STATUS } from "@/lib/constants";
+import { getLeagueStandings } from "@/lib/standings";
+import { getLeaders } from "@/lib/stats";
+import { age } from "@/lib/utils";
+import { Avatar, Badge, EmptyState, FormBadge, KeyValue, SectionHeader, StatTile, StatusBadge, TeamCrest } from "@/components/ui";
+import { LeaderTable, MatchCard, MatchRow } from "@/components/sport";
+
+type P = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: P): Promise<Metadata> {
+  const { slug } = await params;
+  const t = await db.team.findUnique({ where: { slug }, select: { name: true, district: true } });
+  return { title: t?.name ?? "Takım", description: t ? `${t.name} (${t.district}) kadrosu, maçları ve istatistikleri.` : undefined };
+}
+
+export default async function TeamPage({ params }: P) {
+  const { slug } = await params;
+  const team = await db.team.findUnique({
+    where: { slug },
+    include: { venue: true, players: { orderBy: [{ jerseyNumber: "asc" }] }, entries: { include: { league: { include: { season: true } } } } },
+  });
+  if (!team) notFound();
+  const def = sportDef(team.sport);
+  const league = team.entries.find((e) => e.league.season.isActive)?.league ?? team.entries[0]?.league;
+
+  const teamSel = { select: { name: true, shortName: true, slug: true, logoUrl: true, primaryColor: true, secondaryColor: true } };
+  const [matches, standings, scorers] = await Promise.all([
+    db.match.findMany({ where: { OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }] }, orderBy: { date: "asc" }, include: { homeTeam: teamSel, awayTeam: teamSel, venue: true, league: true } }),
+    league ? getLeagueStandings(league.id) : Promise.resolve([]),
+    getLeaders(def.scoringEvents, { teamId: team.id }, 5),
+  ]);
+  const row = standings.find((r) => r.teamId === team.id);
+  const played = matches.filter((m) => m.status === "FINISHED");
+  const next = matches.find((m) => m.status === "SCHEDULED" || m.status === "LIVE");
+
+  const byPosition = def.positions.map((pos) => ({ pos, players: team.players.filter((p) => p.position === pos) })).filter((g) => g.players.length);
+  const others = team.players.filter((p) => !def.positions.includes(p.position ?? ""));
+  if (others.length) byPosition.push({ pos: "Diğer", players: others });
+
+  return (
+    <>
+      <section className="relative overflow-hidden text-white" style={{ background: `linear-gradient(135deg, ${team.primaryColor} 0%, #0a0d15 75%)` }}>
+        <div className="bg-basalt-wall absolute inset-0 opacity-50 mix-blend-overlay" />
+        <div className="container-x relative py-12">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+            <TeamCrest team={team} size={112} className="ring-4" />
+            <div className="flex-1">
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="dark">{def.emoji} {def.label}</Badge>
+                <Badge tone="dark">{GENDERS[team.gender as "ERKEK"]?.league}</Badge>
+                {team.status !== "ACTIVE" && <Badge tone="zinc">Pasif</Badge>}
+              </div>
+              <h1 className="mt-3 font-display text-4xl font-semibold uppercase tracking-wide sm:text-5xl">{team.name}</h1>
+              <p className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-white/75">
+                <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {team.district}{team.neighborhood ? ` · ${team.neighborhood}` : ""}</span>
+                {team.foundedYear && <span className="flex items-center gap-1"><CalendarDays className="h-4 w-4" /> Kuruluş {team.foundedYear}</span>}
+                <span className="flex items-center gap-1"><Users className="h-4 w-4" /> {team.players.length} oyuncu</span>
+              </p>
+            </div>
+            {row && league && (
+              <Link href={`/spor/lig/${league.slug}`} className="rounded-2xl bg-white/10 px-6 py-4 text-center ring-1 ring-white/20 backdrop-blur transition hover:bg-white/15">
+                <p className="font-display text-5xl font-bold">{row.position}.</p>
+                <p className="text-xs uppercase tracking-wider text-white/70">{row.points} puan · Sıralama</p>
+              </Link>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <div className="container-x grid gap-8 py-10 lg:grid-cols-[1fr_20rem]">
+        <div className="space-y-10">
+          {row && (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <StatTile label="Oynanan" value={row.played} sub={`${row.won}G ${def.allowsDraw ? `${row.drawn}B ` : ""}${row.lost}M`} />
+              <StatTile label={`Atılan ${def.scoreLabel}`} value={row.scored} sub={`Maç başı ${row.played ? (row.scored / row.played).toFixed(1) : 0}`} />
+              <StatTile label={`Yenilen ${def.scoreLabel}`} value={row.conceded} sub={`Averaj ${row.diff > 0 ? "+" : ""}${row.diff}`} />
+              <div className="card p-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-basalt-500">Son Form</p>
+                <div className="mt-3 flex gap-1">{row.form.length ? row.form.map((f, i) => <FormBadge key={i} r={f} />) : <span className="text-sm text-basalt-400">—</span>}</div>
+              </div>
+            </div>
+          )}
+
+          {next && (
+            <div>
+              <SectionHeader title="Sıradaki Maç" />
+              <div className="max-w-md"><MatchCard m={next} /></div>
+            </div>
+          )}
+
+          <div>
+            <SectionHeader eyebrow="Kadro" title={`${team.players.length} Oyuncu`} />
+            {team.players.length === 0 ? <EmptyState title="Kadro henüz girilmedi" /> : (
+              <div className="space-y-6">
+                {byPosition.map((g) => (
+                  <div key={g.pos}>
+                    <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-basalt-500">{g.pos}</h3>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {g.players.map((p) => (
+                        <Link key={p.id} href={`/spor/oyuncu/${p.slug}`} className="card group flex items-center gap-3 p-3 transition hover:shadow-lg">
+                          <div className="relative">
+                            <Avatar name={`${p.firstName} ${p.lastName}`} src={p.photoUrl} size={48} color={team.primaryColor} />
+                            {p.jerseyNumber != null && <span className="absolute -bottom-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-basalt-900 px-1 text-[10px] font-bold text-white ring-2 ring-white">{p.jerseyNumber}</span>}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-semibold group-hover:text-dicle-700">{p.firstName} {p.lastName} {p.isCaptain && <span title="Kaptan" className="ml-1 rounded bg-amber-400 px-1 text-[10px] font-bold text-amber-950">C</span>}</p>
+                            <p className="text-xs text-basalt-500">{age(p.birthDate) ? `${age(p.birthDate)} yaş` : ""}{p.heightCm ? ` · ${p.heightCm} cm` : ""}</p>
+                          </div>
+                          {p.status !== "ACTIVE" && <StatusBadge map={PLAYER_STATUS} value={p.status} />}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <SectionHeader eyebrow="Maçlar" title="Fikstür & Sonuçlar" />
+            <div className="card divide-y divide-basalt-100 overflow-hidden">
+              {matches.length === 0 ? <p className="p-6 text-center text-sm text-basalt-500">Maç bulunmuyor</p> : matches.map((m) => <MatchRow key={m.id} m={m} />)}
+            </div>
+          </div>
+        </div>
+
+        <aside className="space-y-6">
+          <div className="card p-5">
+            <h3 className="mb-2 font-semibold">Kulüp Bilgileri</h3>
+            <KeyValue items={[
+              ["Lig", league ? <Link href={`/spor/lig/${league.slug}`} className="link">{league.name}</Link> : "—"],
+              ["Antrenör", team.coachName], ["Takım Sorumlusu", team.managerName], ["İç Saha", team.venue?.name],
+              ["Renkler", <span key="c" className="inline-flex gap-1"><span className="h-4 w-4 rounded-full ring-1 ring-basalt-200" style={{ background: team.primaryColor }} /><span className="h-4 w-4 rounded-full ring-1 ring-basalt-200" style={{ background: team.secondaryColor }} /></span>],
+            ]} />
+            {team.description && <p className="mt-4 text-sm leading-relaxed text-basalt-600">{team.description}</p>}
+          </div>
+          <div className="card overflow-hidden">
+            <h3 className="border-b border-basalt-100 px-4 py-3 font-semibold">Takımın {def.scorerTitle === "Gol Krallığı" ? "Golcüleri" : "Skorerleri"}</h3>
+            <LeaderTable rows={scorers} unit={def.scorerUnit} compact />
+          </div>
+          <div className="card p-5 text-sm text-basalt-600">
+            <p className="flex items-center gap-2 font-semibold text-basalt-800"><User2 className="h-4 w-4" /> Takıma katılmak ister misin?</p>
+            <p className="mt-1">Oyuncu transferleri ve takım başvuruları başvuru dönemlerinde organizasyon üzerinden yapılır.</p>
+            <Link href="/basvuru" className="mt-3 inline-flex items-center gap-1 font-semibold text-dicle-700"><Phone className="h-4 w-4" /> Başvuru dönemleri →</Link>
+          </div>
+          <p className="text-xs text-basalt-400">Toplam {played.length} resmi maç oynandı.</p>
+        </aside>
+      </div>
+    </>
+  );
+}

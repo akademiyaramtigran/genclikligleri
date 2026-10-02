@@ -1,0 +1,501 @@
+// Diyarbakır Gençlik Organizasyonu — Spor · Müzik · Tiyatro
+// SQLite enum desteklemediği için sabit değerler String olarak tutulur;
+// geçerli değerler src/lib/constants.ts içinde tanımlıdır.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────── Yönetim ───────────────────────────────
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  role         String        @default("EDITOR") // SUPER_ADMIN | ADMIN | EDITOR
+  scope        String        @default("ALL") // ALL | SPOR | MUZIK | TIYATRO
+  active       Boolean       @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime      @default(now())
+  reviews      Application[] @relation("Reviewer")
+  logs         ActivityLog[]
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Season {
+  id        String   @id @default(cuid())
+  name      String   @unique // 2026-2027
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+  leagues   League[]
+}
+
+model Venue {
+  id            String          @id @default(cuid())
+  slug          String          @unique
+  name          String
+  type          String          @default("SAHA") // SAHA | SALON | SAHNE | ACIK_HAVA
+  district      String
+  address       String?
+  capacity      Int?
+  mapUrl        String?
+  description   String?
+  matches       Match[]
+  teams         Team[]
+  musicRounds   MusicRound[]
+  theatreShows  TheatreShow[]
+}
+
+// ─────────────────────────────── Spor ───────────────────────────────
+
+model League {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  name        String
+  sport       String // FUTBOL | BASKETBOL | VOLEYBOL | HENTBOL
+  gender      String // ERKEK | KADIN
+  ageGroup    String        @default("U-21")
+  status      String        @default("PLANNED") // PLANNED | ONGOING | COMPLETED
+  description String?
+  rules       String?
+  seasonId    String
+  season      Season        @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  entries     LeagueEntry[]
+  matches     Match[]
+  periods     ApplicationPeriod[]
+  createdAt   DateTime      @default(now())
+
+  @@index([sport, gender])
+}
+
+model LeagueEntry {
+  id            String @id @default(cuid())
+  leagueId      String
+  teamId        String
+  league        League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  team          Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  group         String?
+  penaltyPoints Int    @default(0)
+
+  @@unique([leagueId, teamId])
+}
+
+model Team {
+  id             String        @id @default(cuid())
+  slug           String        @unique
+  name           String
+  shortName      String
+  sport          String
+  gender         String
+  district       String
+  neighborhood   String?
+  logoUrl        String?
+  primaryColor   String        @default("#0f766e")
+  secondaryColor String        @default("#ffffff")
+  foundedYear    Int?
+  coachName      String?
+  managerName    String?
+  contactPhone   String?
+  contactEmail   String?
+  instagram      String?
+  description    String?
+  status         String        @default("ACTIVE") // ACTIVE | PASSIVE
+  venueId        String?
+  venue          Venue?        @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  players        Player[]
+  entries        LeagueEntry[]
+  homeMatches    Match[]       @relation("HomeTeam")
+  awayMatches    Match[]       @relation("AwayTeam")
+  events         MatchEvent[]
+  createdAt      DateTime      @default(now())
+}
+
+model Player {
+  id           String       @id @default(cuid())
+  slug         String       @unique
+  firstName    String
+  lastName     String
+  gender       String
+  birthDate    DateTime?
+  position     String?
+  jerseyNumber Int?
+  heightCm     Int?
+  weightKg     Int?
+  strongSide   String? // Sağ | Sol | Her ikisi
+  district     String?
+  school       String?
+  photoUrl     String?
+  bio          String?
+  licenseNo    String?      @unique
+  identityNo   String? // Yalnızca yöneticiler görür
+  isCaptain    Boolean      @default(false)
+  status       String       @default("ACTIVE") // ACTIVE | INJURED | SUSPENDED | PASSIVE
+  teamId       String?
+  team         Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  events       MatchEvent[]
+  mvpMatches   Match[]      @relation("MatchMvp")
+  createdAt    DateTime     @default(now())
+
+  @@index([teamId])
+}
+
+model Match {
+  id           String       @id @default(cuid())
+  leagueId     String
+  league       League       @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  round        Int
+  homeTeamId   String
+  awayTeamId   String
+  homeTeam     Team         @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeam     Team         @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  date         DateTime
+  venueId      String?
+  venue        Venue?       @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  status       String       @default("SCHEDULED") // SCHEDULED | LIVE | FINISHED | POSTPONED | CANCELLED
+  homeScore    Int?
+  awayScore    Int?
+  periodScores String? // Set / periyot skorları: "25-21, 22-25, 25-18"
+  referee      String?
+  attendance   Int?
+  youtubeUrl   String?
+  summary      String?
+  mvpPlayerId  String?
+  mvpPlayer    Player?      @relation("MatchMvp", fields: [mvpPlayerId], references: [id], onDelete: SetNull)
+  events       MatchEvent[]
+  createdAt    DateTime     @default(now())
+
+  @@index([leagueId, round])
+  @@index([date])
+}
+
+model MatchEvent {
+  id       String  @id @default(cuid())
+  matchId  String
+  match    Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  teamId   String
+  team     Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerId String?
+  player   Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  type     String // GOAL | PENALTY_GOAL | OWN_GOAL | ASSIST | YELLOW_CARD | RED_CARD | POINTS | REBOUND | THREE_POINT | ACE | BLOCK | SAVE | SUSPENSION
+  value    Int     @default(1)
+  minute   Int?
+  note     String?
+
+  @@index([matchId])
+  @@index([playerId, type])
+}
+
+// ─────────────────────────────── Başvurular ───────────────────────────────
+
+model ApplicationPeriod {
+  id                String        @id @default(cuid())
+  slug              String        @unique
+  title             String
+  category          String // SPOR | MUZIK | TIYATRO
+  sport             String?
+  gender            String?
+  leagueId          String?
+  league            League?       @relation(fields: [leagueId], references: [id], onDelete: SetNull)
+  startDate         DateTime
+  endDate           DateTime
+  summary           String
+  description       String?
+  requirements      String // Satır satır şartlar
+  requiredDocuments String // JSON: [{ key, label, required, hint }]
+  minMembers        Int?
+  maxMembers        Int?
+  minAge            Int?
+  maxAge            Int?
+  quota             Int?
+  fee               String?
+  contactInfo       String?
+  isPublished       Boolean       @default(true)
+  applications      Application[]
+  createdAt         DateTime      @default(now())
+}
+
+model Application {
+  id             String                @id @default(cuid())
+  trackingCode   String                @unique
+  periodId       String
+  period         ApplicationPeriod     @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  status         String                @default("PENDING") // PENDING | IN_REVIEW | NEEDS_REVISION | APPROVED | REJECTED
+  title          String // Takım / grup / sanatçı / oyun adı
+  applicantName  String
+  applicantEmail String
+  applicantPhone String
+  applicantRole  String? // Takım sorumlusu, antrenör, solist…
+  district       String
+  data           String                @default("{}") // Kategoriye özel alanlar (JSON)
+  members        String                @default("[]") // Oyuncu / üye listesi (JSON)
+  kvkkConsent    Boolean               @default(false)
+  adminNote      String?
+  publicNote     String? // Başvuru sahibine gösterilen açıklama
+  reviewedById   String?
+  reviewedBy     User?                 @relation("Reviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt     DateTime?
+  resultEntityId String? // Onay sonrası oluşturulan takım / yarışmacı / topluluk
+  documents      ApplicationDocument[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@index([status])
+}
+
+model ApplicationDocument {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  docKey        String
+  label         String
+  fileName      String
+  storedName    String
+  mimeType      String
+  size          Int
+  createdAt     DateTime    @default(now())
+}
+
+// ─────────────────────────────── Müzik Yarışması ───────────────────────────────
+
+model MusicCompetition {
+  id          String            @id @default(cuid())
+  slug        String            @unique
+  name        String
+  edition     String
+  tagline     String?
+  description String?
+  prizes      String? // Satır satır ödüller
+  status      String            @default("ONGOING") // PLANNED | ONGOING | COMPLETED
+  votingOpen  Boolean           @default(false)
+  isCurrent   Boolean           @default(false)
+  contestants MusicContestant[]
+  rounds      MusicRound[]
+  jury        MusicJury[]
+  createdAt   DateTime          @default(now())
+}
+
+model MusicContestant {
+  id            String             @id @default(cuid())
+  slug          String             @unique
+  competitionId String
+  competition   MusicCompetition   @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  name          String
+  type          String             @default("SOLO") // SOLO | GRUP
+  genre         String
+  district      String
+  members       String             @default("[]") // JSON: [{ name, role }]
+  bio           String?
+  photoUrl      String?
+  instagram     String?
+  youtubeUrl    String?
+  status        String             @default("ACTIVE") // ACTIVE | ELIMINATED | FINALIST | WINNER
+  finalRank     Int?
+  performances  MusicPerformance[]
+  votes         MusicVote[]
+  createdAt     DateTime           @default(now())
+}
+
+model MusicRound {
+  id            String             @id @default(cuid())
+  competitionId String
+  competition   MusicCompetition   @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  name          String
+  order         Int
+  date          DateTime
+  venueId       String?
+  venue         Venue?             @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  status        String             @default("UPCOMING") // UPCOMING | LIVE | COMPLETED
+  advanceCount  Int?
+  youtubeUrl    String?
+  description   String?
+  performances  MusicPerformance[]
+}
+
+model MusicPerformance {
+  id           String          @id @default(cuid())
+  roundId      String
+  round        MusicRound      @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  contestantId String
+  contestant   MusicContestant @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+  songTitle    String
+  songArtist   String?
+  order        Int             @default(0)
+  juryScore    Float? // 0-100
+  publicScore  Float? // 0-100
+  totalScore   Float?
+  rank         Int?
+  advanced     Boolean         @default(false)
+  youtubeUrl   String?
+  juryComment  String?
+
+  @@unique([roundId, contestantId])
+}
+
+model MusicJury {
+  id            String           @id @default(cuid())
+  competitionId String
+  competition   MusicCompetition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  name          String
+  title         String
+  bio           String?
+  photoUrl      String?
+  order         Int              @default(0)
+}
+
+model MusicVote {
+  id           String          @id @default(cuid())
+  contestantId String
+  contestant   MusicContestant @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+  voterHash    String
+  dayKey       String // Günde bir oy: YYYY-MM-DD
+  createdAt    DateTime        @default(now())
+
+  @@unique([voterHash, dayKey])
+}
+
+// ─────────────────────────────── Tiyatro Festivali ───────────────────────────────
+
+model TheatreFestival {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  name        String
+  edition     String
+  theme       String?
+  tagline     String?
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  status      String         @default("PLANNED") // PLANNED | ONGOING | COMPLETED
+  isCurrent   Boolean        @default(false)
+  plays       TheatrePlay[]
+  awards      TheatreAward[]
+  workshops   TheatreWorkshop[]
+  createdAt   DateTime       @default(now())
+}
+
+model TheatreGroup {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  name        String
+  district    String
+  foundedYear Int?
+  director    String?
+  memberCount Int?
+  logoUrl     String?
+  instagram   String?
+  description String?
+  plays       TheatrePlay[]
+  createdAt   DateTime      @default(now())
+}
+
+model TheatrePlay {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  festivalId  String
+  festival    TheatreFestival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  groupId     String
+  group       TheatreGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  title       String
+  playwright  String
+  director    String
+  genre       String
+  durationMin Int?
+  ageLimit    String?
+  language    String          @default("Türkçe")
+  synopsis    String?
+  cast        String          @default("[]") // JSON: [{ name, role }]
+  posterUrl   String?
+  youtubeUrl  String?
+  inCompetition Boolean       @default(true)
+  shows       TheatreShow[]
+  awards      TheatreAward[]
+  createdAt   DateTime        @default(now())
+}
+
+model TheatreShow {
+  id         String      @id @default(cuid())
+  playId     String
+  play       TheatrePlay @relation(fields: [playId], references: [id], onDelete: Cascade)
+  venueId    String?
+  venue      Venue?      @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  date       DateTime
+  ticketInfo String      @default("Ücretsiz")
+  status     String      @default("SCHEDULED") // SCHEDULED | SOLD_OUT | DONE | CANCELLED
+}
+
+model TheatreAward {
+  id         String          @id @default(cuid())
+  festivalId String
+  festival   TheatreFestival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  category   String
+  winner     String
+  playId     String?
+  play       TheatrePlay?    @relation(fields: [playId], references: [id], onDelete: SetNull)
+}
+
+model TheatreWorkshop {
+  id          String          @id @default(cuid())
+  festivalId  String
+  festival    TheatreFestival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  title       String
+  instructor  String
+  date        DateTime
+  location    String
+  description String?
+}
+
+// ─────────────────────────────── İçerik ───────────────────────────────
+
+model Announcement {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  excerpt     String
+  content     String
+  category    String   @default("GENEL") // GENEL | SPOR | MUZIK | TIYATRO | BASVURU
+  coverUrl    String?
+  isPinned    Boolean  @default(false)
+  isPublished Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model Video {
+  id          String   @id @default(cuid())
+  title       String
+  youtubeUrl  String
+  category    String   @default("GENEL") // GENEL | SPOR | MUZIK | TIYATRO
+  description String?
+  isFeatured  Boolean  @default(false)
+  publishedAt DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
