@@ -18,6 +18,7 @@ const HERO: Record<string, string> = {
   MUZIK: "bg-[#0b0614]",
   TIYATRO: "bg-curtain",
   YAZARLIK: "bg-[#0c0c0e]",
+  GONULLU: "bg-basalt-wall",
 };
 
 export default function PeriodPage() {

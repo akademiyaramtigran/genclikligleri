@@ -18,6 +18,7 @@ const CAT_STYLE: Record<string, { grad: string; tone: string; icon: string }> = 
   MUZIK: { grad: "from-fuchsia-600 to-purple-900", tone: "fuchsia", icon: "🎤" },
   TIYATRO: { grad: "from-amber-600 to-curtain-900", tone: "amber", icon: "🎭" },
   YAZARLIK: { grad: "from-rose-500 to-zinc-950", tone: "rose", icon: "✒️" },
+  GONULLU: { grad: "from-sky-500 to-basalt-900", tone: "blue", icon: "🤝" },
 };
 
 export default function ApplyIndex() {

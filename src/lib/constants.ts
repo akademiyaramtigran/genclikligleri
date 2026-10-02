@@ -220,12 +220,14 @@ export const CATEGORIES = {
   MUZIK: { key: "MUZIK", label: "Müzik", color: "fuchsia" },
   TIYATRO: { key: "TIYATRO", label: "Tiyatro", color: "amber" },
   YAZARLIK: { key: "YAZARLIK", label: "Yazarlık", color: "rose" },
+  GONULLU: { key: "GONULLU", label: "Hakem & Gönüllü", color: "sky" },
 } as const;
 
 export type CategoryKey = keyof typeof CATEGORIES;
 
 /** Başvuru kategorisinin bağlı olduğu yönetim birimi (yazarlık yarışmasını tiyatro birimi yönetir) */
-export const CATEGORY_UNIT: Record<CategoryKey, "SPOR" | "MUZIK" | "TIYATRO"> = { SPOR: "SPOR", MUZIK: "MUZIK", TIYATRO: "TIYATRO", YAZARLIK: "TIYATRO" };
+// GENEL: yalnızca süper yönetici ve "tüm birimler" yetkili yöneticiler
+export const CATEGORY_UNIT: Record<CategoryKey, "SPOR" | "MUZIK" | "TIYATRO" | "GENEL"> = { SPOR: "SPOR", MUZIK: "MUZIK", TIYATRO: "TIYATRO", YAZARLIK: "TIYATRO", GONULLU: "GENEL" };
 export const unitCategories = (unit: string) => (Object.keys(CATEGORY_UNIT) as CategoryKey[]).filter((c) => CATEGORY_UNIT[c] === unit);
 
 export const APPLICATION_STATUS: Record<string, { label: string; tone: string; description: string }> = {
@@ -263,6 +265,11 @@ export const DEFAULT_DOCS: Record<CategoryKey, RequiredDoc[]> = {
     { key: "metin", label: "Oyun metni (PDF veya Word)", required: true, hint: "Metnin üzerinde adınız olmasın; yalnızca eser adı ve rumuz yazın" },
     { key: "ozgunluk", label: "İmzalı özgünlük beyanı", required: true, hint: "Metnin size ait olduğunu ve daha önce yayımlanmadığını beyan edin" },
     { key: "kimlik", label: "Kimlik fotokopisi", required: true },
+    { key: "veli", label: "18 yaş altı için veli izin belgesi", required: false },
+  ],
+  GONULLU: [
+    { key: "kimlik", label: "Kimlik fotokopisi", required: true },
+    { key: "belge", label: "Hakemlik / ilk yardım belgesi", required: false, hint: "Varsa" },
     { key: "veli", label: "18 yaş altı için veli izin belgesi", required: false },
   ],
 };
@@ -329,6 +336,28 @@ export const FESTIVAL_STATUS: Record<string, { label: string; tone: string }> = 
   PLANNED: { label: "Yakında", tone: "amber" },
   ONGOING: { label: "Festival Sürüyor", tone: "red" },
   COMPLETED: { label: "Tamamlandı", tone: "zinc" },
+};
+
+// ───────── Haftanın öne çıkanları & Gençliğin Sesi ─────────
+
+export const HIGHLIGHT_KINDS: Record<string, { label: string; short: string; tone: string }> = {
+  PLAYER: { label: "Haftanın Oyuncusu", short: "Oyuncu", tone: "emerald" },
+  ARTIST: { label: "Haftanın Sanatçısı", short: "Sanatçı", tone: "fuchsia" },
+  FAIRPLAY: { label: "Haftanın Centilmenlik Hareketi", short: "Centilmenlik", tone: "amber" },
+};
+
+export const POST_KINDS: Record<string, { label: string; tone: string }> = {
+  ROPORTAJ: { label: "Röportaj", tone: "sky" },
+  KOSE: { label: "Köşe Yazısı", tone: "rose" },
+  FOTO: { label: "Fotoğraf", tone: "amber" },
+  HABER: { label: "Haber", tone: "emerald" },
+};
+
+export const POST_SECTIONS: Record<string, string> = { SPOR: "Spor", MUZIK: "Müzik", TIYATRO: "Tiyatro", YAZARLIK: "Genç Kalemler", GENEL: "Genel" };
+
+export const VOLUNTEER_ROLES: Record<string, string> = {
+  HAKEM: "Hakem / Yardımcı Hakem", MASA: "Masa Görevlisi / İstatistik", GONULLU: "Saha & Organizasyon Gönüllüsü",
+  SAHNE: "Sahne / Kulis Ekibi", MEDYA: "Fotoğraf & Video", ILKYARDIM: "İlk Yardım",
 };
 
 export const ANNOUNCEMENT_CATEGORIES: Record<string, string> = {

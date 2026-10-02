@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AlertCircle, Camera, Check, CheckCircle2, ChevronLeft, ChevronRight, FileUp, Loader2, Plus, Trash2, Upload, UserPlus, Copy } from "lucide-react";
 import { submitApplication, type ApplyState, type Member } from "@/actions/public";
 import { cn } from "@/lib/utils";
-import { DISTRICTS, MUSIC_GENRES, THEATRE_GENRES, SPORTS, WRITING_CATEGORIES, WRITING_CATEGORY_HINT, WRITING_LANGUAGES, type SportKey } from "@/lib/constants";
+import { DISTRICTS, MUSIC_GENRES, THEATRE_GENRES, SPORTS, WRITING_CATEGORIES, WRITING_CATEGORY_HINT, WRITING_LANGUAGES, VOLUNTEER_ROLES, type SportKey } from "@/lib/constants";
 import { MAX_DOC_MB as MAX_UPLOAD_MB, compressImage } from "@/lib/files";
 import type { RequiredDoc } from "@/lib/types";
 
@@ -13,7 +13,7 @@ import { useT } from "@/lib/i18n";
 type PeriodProps = {
   id: string;
   title: string;
-  category: "SPOR" | "MUZIK" | "TIYATRO" | "YAZARLIK";
+  category: "SPOR" | "MUZIK" | "TIYATRO" | "YAZARLIK" | "GONULLU";
   sport?: string | null;
   gender?: string | null;
   minMembers?: number | null;
@@ -38,6 +38,7 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
   const sportDef = period.sport ? SPORTS[period.sport as SportKey] : null;
   const isSport = period.category === "SPOR";
   const isWriting = period.category === "YAZARLIK";
+  const isVolunteer = period.category === "GONULLU";
   const memberWord = isSport ? "Oyuncu" : isWriting ? "Yazar" : "Üye";
 
   useEffect(() => {
@@ -138,7 +139,7 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
             <Field label={t("Ad Soyad")} required>{<input name="applicantName" required minLength={3} className="input" autoComplete="name" />}{err("applicantName")}</Field>
             <Field label={t("Görevi")}>
               <select name="applicantRole" className="input">
-                {(isSport ? ["Takım Sorumlusu", "Antrenör", "Kulüp Başkanı", "Öğretmen"] : period.category === "MUZIK" ? ["Solist", "Grup Sorumlusu", "Menajer", "Veli"] : isWriting ? ["Yazar", "Veli", "Öğretmen"] : ["Yönetmen", "Topluluk Sorumlusu", "Öğretmen", "Yapımcı"]).map((r) => <option key={r}>{r}</option>)}
+                {(isSport ? ["Takım Sorumlusu", "Antrenör", "Kulüp Başkanı", "Öğretmen"] : period.category === "MUZIK" ? ["Solist", "Grup Sorumlusu", "Menajer", "Veli"] : isWriting ? ["Yazar", "Veli", "Öğretmen"] : isVolunteer ? ["Başvuran", "Veli"] : ["Yönetmen", "Topluluk Sorumlusu", "Öğretmen", "Yapımcı"]).map((r) => <option key={r}>{r}</option>)}
               </select>
             </Field>
             <Field label={t("E-posta")} required>{<input name="applicantEmail" type="email" required className="input" autoComplete="email" />}{err("applicantEmail")}</Field>
@@ -242,7 +243,23 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
               <Field label={t("Teknik İhtiyaçlar (ışık, ses, dekor)")}>{<textarea name="techNeeds" rows={2} className="input" />}</Field>
             </>
           )}
-          {!isWriting && (
+          {isVolunteer && (
+            <>
+              <StepTitle n={2} title={t("Görev Bilgileri")} desc={t("Hakemlik, masa görevi, sahne ekibi, fotoğraf-video ve organizasyon gönüllülüğü.")} />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label={t("Görev")} required>
+                  <select name="role" required className="input" defaultValue=""><option value="" disabled>{t("Seçiniz")}</option>{Object.entries(VOLUNTEER_ROLES).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}</select>
+                  {err("role")}
+                </Field>
+                <Field label={t("Branş / Alan")}>
+                  <select name="branch" className="input" defaultValue=""><option value="">—</option>{[...Object.values(SPORTS).map((s) => s.label), "Müzik", "Tiyatro", "Genel"].map((b) => <option key={b}>{t(b)}</option>)}</select>
+                </Field>
+                <Field label={t("Uygun olduğunuz zamanlar")}>{<input name="availability" className="input" placeholder={t("ör. hafta sonları, akşamları")} />}</Field>
+              </div>
+              <Field label={t("Deneyim ve belgeler")}>{<textarea name="experience" rows={3} className="input" placeholder={t("Hakemlik kursu, ilk yardım sertifikası, daha önce görev aldığınız etkinlikler…")} />}</Field>
+            </>
+          )}
+          {!isWriting && !isVolunteer && (
             <ImagePicker
               name="doc_logo"
               label={isSport ? t("Takım Logosu") : period.category === "MUZIK" ? t("Sanatçı / Grup Fotoğrafı") : t("Topluluk Logosu")}
@@ -255,7 +272,7 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
 
         {/* 3. Kadro */}
         <div ref={(el) => { stepRefs.current[2] = el; }} className={cn("space-y-5", step !== 2 && "hidden")}>
-          <StepTitle n={3} title={isSport ? "Oyuncu Listesi" : period.category === "MUZIK" ? "Sanatçı / Grup Üyeleri" : isWriting ? "Yazar Bilgileri" : "Oyuncu & Teknik Ekip"}
+          <StepTitle n={3} title={isSport ? "Oyuncu Listesi" : period.category === "MUZIK" ? "Sanatçı / Grup Üyeleri" : isWriting ? "Yazar Bilgileri" : isVolunteer ? "Kişisel Bilgiler" : "Oyuncu & Teknik Ekip"}
             desc={`${period.minMembers ? `En az ${period.minMembers}` : ""}${period.minMembers && period.maxMembers ? ", " : ""}${period.maxMembers ? `en fazla ${period.maxMembers}` : ""} kişi.${period.minAge || period.maxAge ? ` Yaş aralığı: ${period.minAge ?? "—"}–${period.maxAge ?? "—"}.` : ""}`} />
           {err("members")}
           <div className="space-y-3">
@@ -379,7 +396,7 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
 function stepHasErrorFor(fe: Record<string, string>, i: number) {
   const keys = Object.keys(fe);
   if (i === 0) return keys.some((k) => ["applicantName", "applicantEmail", "applicantPhone", "district"].includes(k));
-  if (i === 1) return keys.some((k) => ["title", "gender", "coachName", "genre", "playTitle", "playwright", "language", "workCategory", "doc_logo"].includes(k));
+  if (i === 1) return keys.some((k) => ["title", "gender", "coachName", "genre", "playTitle", "playwright", "language", "workCategory", "doc_logo", "role"].includes(k));
   if (i === 2) return !!fe.members;
   if (i === 3) return keys.some((k) => k.startsWith("doc_") && k !== "doc_logo");
   return !!fe.kvkk || !!fe.rules;
@@ -390,7 +407,7 @@ function StepTitle({ n, title, desc }: { n: number; title: string; desc?: string
   return (
     <div className="mb-2">
       <p className="text-xs font-bold uppercase tracking-widest text-dicle-600">{t("Adım")} {n}</p>
-      <h3 className="font-display text-2xl font-semibold uppercase tracking-wide">{title}</h3>
+      <h3 className="font-display text-2xl font-semibold uppercase tracking-wide">{t(title)}</h3>
       {desc && <p className="mt-1 text-sm text-basalt-500">{desc}</p>}
     </div>
   );

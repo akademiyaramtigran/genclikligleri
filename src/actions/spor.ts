@@ -420,3 +420,82 @@ export const deleteVenue = (_p: ActionResult, fd: FormData) => wrap(async () => 
   changed();
   return ok("Silindi.");
 });
+
+// ───────────── Canlı maç girişi ─────────────
+
+/**
+ * Maç sırasında tek dokunuşla işlem:
+ * start · end · score (teamId, delta, playerId?) · stat (teamId, type, playerId) · undo
+ */
+export const liveAction = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin(UNIT);
+  const id = str(fd, "matchId"), op = str(fd, "op");
+  const m = await getOne<Match>("matches", id);
+  if (!m) return fail("Maç bulunamadı.");
+  const def = SPORTS[m.sport as SportKey];
+  const log = m.liveLog ?? [];
+  const minute = m.liveStartedAt ? Math.max(1, Math.ceil((Date.now() - new Date(m.liveStartedAt).getTime()) / 60000)) : null;
+
+  if (op === "start") {
+    await updateDoc(ref("matches", id), { status: "LIVE", liveStartedAt: m.liveStartedAt ?? new Date(), homeScore: m.homeScore ?? 0, awayScore: m.awayScore ?? 0, liveLog: log });
+    await logActivity(admin, "CANLI", "Maç", id, "Maç başladı");
+    changed();
+    return ok("Maç canlı yayında.");
+  }
+  if (op === "end") {
+    const hs = m.homeScore ?? 0, as = m.awayScore ?? 0;
+    if (m.sport === "VOLEYBOL" && Math.max(hs, as) !== 3) return fail("Voleybolda kazanan takım 3 set almalıdır.");
+    if (!def.allowsDraw && hs === as) return fail(`${def.label} maçları berabere bitemez.`);
+    await updateDoc(ref("matches", id), { status: "FINISHED", homeScore: hs, awayScore: as });
+    await rebuildLeague(m.leagueId);
+    await logActivity(admin, "SKOR", "Maç", id, `Canlı giriş bitti: ${hs}-${as}`);
+    changed();
+    return ok(`Maç bitti: ${hs}-${as}`);
+  }
+  if (m.status !== "LIVE") return fail("Önce maçı başlatın.");
+
+  const teamId = str(fd, "teamId");
+  const side = teamId === m.homeTeamId ? "home" : teamId === m.awayTeamId ? "away" : null;
+  const playerId = optStr(fd, "playerId");
+  const player = playerId ? await getOne<Player>("players", playerId) : null;
+  const newEvent = (type: string, value: number): MatchEvent => ({ id: crypto.randomUUID().slice(0, 8), teamId, playerId: player?.id ?? null, playerName: player ? `${player.firstName} ${player.lastName}` : "", type, value, minute });
+
+  if (op === "score") {
+    if (!side) return fail("Takım seçiniz.");
+    const delta = Math.min(3, Math.max(1, int(fd, "delta") ?? 1));
+    // Voleybolda skor set sayısıdır (oyuncu olayı yazılmaz); diğer branşlarda oyuncu seçildiyse gol/sayı olayı da yazılır
+    const ev = m.sport !== "VOLEYBOL" && player ? newEvent(def.scoringEvents[0]!, m.sport === "FUTBOL" ? 1 : delta) : null;
+    const patch: Record<string, unknown> = {
+      [side === "home" ? "homeScore" : "awayScore"]: ((side === "home" ? m.homeScore : m.awayScore) ?? 0) + delta,
+      liveLog: [...log, { id: crypto.randomUUID().slice(0, 8), teamId, delta, eventId: ev?.id ?? null }],
+    };
+    if (ev) { patch.events = [...m.events, ev]; patch.playerIds = [...new Set([...m.playerIds, ev.playerId!])]; }
+    await updateDoc(ref("matches", id), patch);
+    changed();
+    return ok(`+${delta} ${side === "home" ? m.home.shortName : m.away.shortName}${player ? ` · ${player.firstName} ${player.lastName}` : ""}`);
+  }
+  if (op === "stat") {
+    const type = str(fd, "type");
+    if (!side || !player || !def.events.some((e) => e.key === type)) return fail("Oyuncu ve olay seçiniz.");
+    const ev = newEvent(type, 1);
+    await updateDoc(ref("matches", id), {
+      events: [...m.events, ev], playerIds: [...new Set([...m.playerIds, player.id])],
+      liveLog: [...log, { id: crypto.randomUUID().slice(0, 8), teamId, delta: 0, eventId: ev.id }],
+    });
+    changed();
+    return ok(`${def.events.find((e) => e.key === type)?.label}: ${player.firstName} ${player.lastName}`);
+  }
+  if (op === "undo") {
+    const last = log[log.length - 1];
+    if (!last) return fail("Geri alınacak işlem yok.");
+    const lastSide = last.teamId === m.homeTeamId ? "homeScore" : "awayScore";
+    const events = last.eventId ? m.events.filter((e) => e.id !== last.eventId) : m.events;
+    await updateDoc(ref("matches", id), {
+      [lastSide]: Math.max(0, ((lastSide === "homeScore" ? m.homeScore : m.awayScore) ?? 0) - last.delta),
+      events, playerIds: [...new Set(events.map((e) => e.playerId).filter((x): x is string => !!x))], liveLog: log.slice(0, -1),
+    });
+    changed();
+    return ok("Son işlem geri alındı.");
+  }
+  return fail("Bilinmeyen işlem.");
+});

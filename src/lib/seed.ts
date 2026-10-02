@@ -5,6 +5,7 @@
 
 import { batchWrite, ref, newRef } from "./admin";
 import { buildLeagueSummary } from "./stats";
+import { seedExtras } from "./seed-extras";
 import { dayKey, slugify } from "./utils";
 import type { League, Match, MatchEvent, Team } from "./types";
 
@@ -264,6 +265,7 @@ export async function seedDemo(onProgress?: (msg: string) => void) {
       }
       const summary = buildLeagueSummary(league, teams, matches);
       put("leagues", leagueId, { ...league, id: undefined, summary: JSON.parse(JSON.stringify({ ...summary, updatedAt: null })), createdAt: now });
+
     }
   }
 
@@ -462,6 +464,8 @@ export async function seedDemo(onProgress?: (msg: string) => void) {
 
   onProgress?.(`${ops.length} kayıt yazılıyor…`);
   await batchWrite(ops, (n) => onProgress?.(`${n} / ${ops.length} kayıt yazıldı…`));
+  // Manşet, öne çıkanlar, Gençliğin Sesi, sezon arşivi, gönüllü dönemi
+  const extra = await seedExtras(onProgress);
   onProgress?.("Tamamlandı!");
-  return ops.length;
+  return ops.length + extra;
 }

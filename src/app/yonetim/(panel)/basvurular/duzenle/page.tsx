@@ -9,7 +9,7 @@ import type { Application, Period } from "@/lib/types";
 import { useAdmin } from "../../../AdminContext";
 import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { DocLink } from "./DocLink";
-import { APPLICATION_STATUS, CATEGORIES, SPORTS, WRITING_CATEGORIES, WRITING_LANGUAGES, type SportKey } from "@/lib/constants";
+import { APPLICATION_STATUS, CATEGORIES, SPORTS, WRITING_CATEGORIES, WRITING_LANGUAGES, VOLUNTEER_ROLES, type SportKey } from "@/lib/constants";
 import { age, formatDateTime } from "@/lib/utils";
 import { Badge, EmptyState, KeyValue } from "@/components/ui";
 import { AdminHeader, Panel, SelectField, TextArea } from "@/components/admin/fields";
@@ -22,6 +22,7 @@ const LABELS: Record<string, string> = {
   homeVenue: "İç Saha Tercihi", foundedYear: "Kuruluş", note: "Tanıtım", type: "Katılım", genre: "Tür", demoUrl: "Demo", instagram: "Instagram", bio: "Biyografi", songs: "Eserler",
   playTitle: "Oyun", playwright: "Yazar", director: "Yönetmen", durationMin: "Süre (dk)", language: "Dil", synopsis: "Özet", techNeeds: "Teknik İhtiyaçlar", videoUrl: "Video",
   penName: "Rumuz", workCategory: "Kategori", pageCount: "Sayfa", school: "Okul / Meslek",
+  role: "Görev", branch: "Branş / Alan", experience: "Deneyim", availability: "Uygunluk",
 };
 
 export default function ApplicationDetail() {
@@ -50,7 +51,7 @@ function Inner() {
   const gender = appData.gender || period.gender;
   const leagues = isSport ? data.leagues.filter((l) => (!sport || l.sport === sport) && (!gender || l.gender === gender)) : [];
   const resultLink = app.resultEntityId
-    ? isSport ? `/yonetim/takimlar/duzenle?id=${app.resultEntityId}` : app.category === "MUZIK" ? `/yonetim/muzik/yarismacilar/duzenle?id=${app.resultEntityId}` : app.category === "YAZARLIK" ? `/yonetim/tiyatro/yazarlik?c=${app.resultEntityId}` : `/yonetim/tiyatro/oyunlar`
+    ? isSport ? `/yonetim/takimlar/duzenle?id=${app.resultEntityId}` : app.category === "MUZIK" ? `/yonetim/muzik/yarismacilar/duzenle?id=${app.resultEntityId}` : app.category === "YAZARLIK" ? `/yonetim/tiyatro/yazarlik?c=${app.resultEntityId}` : app.category === "GONULLU" ? "/yonetim/gonulluler" : `/yonetim/tiyatro/oyunlar`
     : null;
   const outOfAge = (m: Record<string, string>) => {
     const a = age(m.birthDate);
@@ -73,14 +74,14 @@ function Inner() {
               <KeyValue items={[["Ad Soyad", app.applicantName], ["Görevi", app.applicantRole], ["E-posta", <a key="e" href={`mailto:${app.applicantEmail}`} className="link">{app.applicantEmail}</a>], ["Telefon", <a key="t" href={`tel:${app.applicantPhone}`} className="link">{app.applicantPhone}</a>], ["İlçe", app.district], ["KVKK Onayı", app.kvkkConsent ? "✔ Verildi" : "✘"]]} />
             </Panel>
             <Panel title={CATEGORIES[app.category as keyof typeof CATEGORIES]?.label + " Bilgileri"}>
-              <KeyValue items={Object.entries(appData).filter(([k]) => !["bio", "note", "synopsis", "techNeeds", "logoUrl"].includes(k)).map(([k, v]) => [
+              <KeyValue items={Object.entries(appData).filter(([k]) => !["bio", "note", "synopsis", "techNeeds", "logoUrl", "experience"].includes(k)).map(([k, v]) => [
                 LABELS[k] ?? k,
-                k === "sport" ? SPORTS[v as SportKey]?.label ?? v : k === "gender" ? (v === "KADIN" ? "Kadınlar" : "Erkekler") : app.category === "YAZARLIK" && k === "language" ? WRITING_LANGUAGES[v] ?? v : k === "workCategory" ? WRITING_CATEGORIES[v] ?? v : k.endsWith("Color") ? <span key={k} className="inline-flex items-center gap-2"><span className="h-4 w-4 rounded-full ring-1 ring-basalt-200" style={{ background: v }} />{v}</span> : /^https?:/.test(v) ? <a key={k} href={v} target="_blank" rel="noreferrer" className="link inline-flex items-center gap-1">Aç <ExternalLink className="h-3 w-3" /></a> : v,
+                k === "sport" ? SPORTS[v as SportKey]?.label ?? v : k === "gender" ? (v === "KADIN" ? "Kadınlar" : "Erkekler") : app.category === "YAZARLIK" && k === "language" ? WRITING_LANGUAGES[v] ?? v : k === "workCategory" ? WRITING_CATEGORIES[v] ?? v : app.category === "GONULLU" && k === "role" ? VOLUNTEER_ROLES[v] ?? v : k.endsWith("Color") ? <span key={k} className="inline-flex items-center gap-2"><span className="h-4 w-4 rounded-full ring-1 ring-basalt-200" style={{ background: v }} />{v}</span> : /^https?:/.test(v) ? <a key={k} href={v} target="_blank" rel="noreferrer" className="link inline-flex items-center gap-1">Aç <ExternalLink className="h-3 w-3" /></a> : v,
               ] as [string, React.ReactNode])} />
               {appData.logoUrl && /^data:image\//.test(appData.logoUrl) && (
                 <div className="mt-3 flex items-center gap-3 rounded-lg bg-basalt-50 p-3 text-sm"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white p-1 ring-1 ring-basalt-200">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={appData.logoUrl} alt="" className="h-full w-full object-contain" /></span><span className="text-xs font-semibold text-basalt-500">{app.category === "MUZIK" ? "Fotoğraf" : "Logo"} — onaylanınca kayda aktarılır</span></div>
               )}
-              {["bio", "note", "synopsis", "techNeeds"].filter((k) => appData[k]).map((k) => (
+              {["bio", "note", "synopsis", "techNeeds", "experience"].filter((k) => appData[k]).map((k) => (
                 <div key={k} className="mt-3 rounded-lg bg-basalt-50 p-3 text-sm"><p className="text-xs font-semibold text-basalt-500">{LABELS[k]}</p><p className="whitespace-pre-line">{appData[k]}</p></div>
               ))}
             </Panel>
@@ -128,7 +129,7 @@ function Inner() {
               {resultLink && <Link href={resultLink} className="btn-outline btn-sm mt-3">Oluşturulan kaydı aç →</Link>}
             </div>
           ) : (
-            <Panel title="Onayla ve Kayıt Oluştur" description={isSport ? "Takım ve tüm oyuncular otomatik oluşturulur." : app.category === "MUZIK" ? "Güncel yarışmaya yarışmacı olarak eklenir." : app.category === "YAZARLIK" ? "Eser güncel Genç Kalemler yarışmasına eklenir." : "Topluluk ve oyun güncel festivale eklenir."}>
+            <Panel title="Onayla ve Kayıt Oluştur" description={isSport ? "Takım ve tüm oyuncular otomatik oluşturulur." : app.category === "MUZIK" ? "Güncel yarışmaya yarışmacı olarak eklenir." : app.category === "YAZARLIK" ? "Eser güncel Genç Kalemler yarışmasına eklenir." : app.category === "GONULLU" ? "Kişi hakem & gönüllü havuzuna eklenir." : "Topluluk ve oyun güncel festivale eklenir."}>
               <AdminForm action={approveApplication} submitLabel="Onayla ve Oluştur" confirm="Başvuru onaylanacak ve kayıtlar oluşturulacak. Devam edilsin mi?">
                 <input type="hidden" name="id" value={app.id} />
                 {isSport && (

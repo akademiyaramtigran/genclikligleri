@@ -14,16 +14,16 @@ const COLS = [
     title: "Spor",
     links: [
       ["Erkek Ligleri", "/spor?cinsiyet=erkek"], ["Kadın Ligleri", "/spor?cinsiyet=kadin"], ["Fikstür", "/spor/fikstur"],
-      ["Krallık Yarışı", "/spor/krallik"], ["Takımlar", "/spor/takimlar"], ["Oyuncular", "/spor/oyuncular"],
+      ["Krallık Yarışı", "/spor/krallik"], ["Takımlar", "/spor/takimlar"], ["Oyuncular", "/spor/oyuncular"], ["Sezon Arşivi", "/spor/arsiv"],
     ],
   },
   {
     title: "Kültür & Sanat",
-    links: [["Genç Sesler Müzik Yarışması", "/muzik"], ["Gençlik Tiyatro Festivali", "/tiyatro"], ["Genç Kalemler Yazarlık Yarışması", "/tiyatro/yazarlik"], ["Video Arşivi", "/videolar"], ["Tesisler & Sahneler", "/tesisler"]],
+    links: [["Genç Sesler Müzik Yarışması", "/muzik"], ["Gençlik Tiyatro Festivali", "/tiyatro"], ["Genç Kalemler Yazarlık Yarışması", "/tiyatro/yazarlik"], ["Gençliğin Sesi", "/gencligin-sesi"], ["Video Arşivi", "/videolar"], ["Tesisler & Sahneler", "/tesisler"]],
   },
   {
     title: "Organizasyon",
-    links: [["Başvurular", "/basvuru"], ["Başvuru Takip", "/basvuru/takip"], ["Duyurular", "/duyurular"], ["Hakkımızda", "/hakkimizda"], ["İletişim", "/iletisim"], ["KVKK Aydınlatma Metni", "/kvkk"]],
+    links: [["Başvurular", "/basvuru"], ["Başvuru Takip", "/basvuru/takip"], ["Hakem & Gönüllü Ol", "/basvuru?kategori=gonullu"], ["Duyurular", "/duyurular"], ["Hakkımızda", "/hakkimizda"], ["İletişim", "/iletisim"], ["KVKK Aydınlatma Metni", "/kvkk"]],
   },
 ] as const;
 

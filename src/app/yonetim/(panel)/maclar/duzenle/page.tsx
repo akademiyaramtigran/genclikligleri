@@ -44,6 +44,7 @@ function Inner() {
         title={<span className="flex flex-wrap items-center gap-3"><TeamCrest team={homeTeam} size={32} /> {homeTeam.name} <span className="rounded-lg bg-basalt-900 px-3 py-1 font-display text-white">{match.homeScore ?? "–"} : {match.awayScore ?? "–"}</span> {awayTeam.name} <TeamCrest team={awayTeam} size={32} /></span>}
         description={`${def.emoji} ${match.leagueName} · ${match.round}. Hafta`}
         actions={<>
+          {match.status !== "FINISHED" && <Link href={`/yonetim/maclar/canli?id=${match.id}`} className="btn btn-sm bg-red-600 text-white hover:bg-red-700">● Canlı Giriş</Link>}
           <Link href={`/spor/mac?id=${match.id}`} target="_blank" className="btn-outline btn-sm">Sitede Gör</Link>
           <ActionButton action={deleteMatch} fields={{ id: match.id }} label="Sil" icon={<Trash2 className="h-3.5 w-3.5" />} confirm="Maç ve tüm olayları silinsin mi?" className="btn-outline btn-sm text-red-600" />
         </>} />

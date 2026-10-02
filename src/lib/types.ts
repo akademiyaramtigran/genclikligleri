@@ -50,6 +50,7 @@ export type Match = {
   date: Date; venueId?: string | null; venueName?: string | null; status: string; homeScore: number | null; awayScore: number | null;
   periodScores?: string | null; referee?: string | null; attendance?: number | null; youtubeUrl?: string | null; summary?: string | null;
   mvpPlayerId?: string | null; mvpName?: string | null; events: MatchEvent[]; playerIds: string[];
+  liveStartedAt?: Date | null; liveLog?: { id: string; teamId: string; delta: number; eventId?: string | null }[];
 };
 
 export type RequiredDoc = { key: string; label: string; required: boolean; hint?: string };
@@ -94,7 +95,19 @@ export type WritingContest = {
   jury: WritingJury[]; entries: WritingEntry[]; youtubeUrl?: string | null; createdAt?: Date;
 };
 
-export type Announcement = { id: string; slug: string; title: string; excerpt: string; content: string; category: string; coverUrl?: string | null; isPinned: boolean; isPublished: boolean; publishedAt: Date };
+export type Announcement = { id: string; slug: string; title: string; excerpt: string; content: string; category: string; coverUrl?: string | null; isPinned: boolean; isPublished: boolean; publishedAt: Date; isHeadline?: boolean; kicker?: string | null };
+
+/** Haftanın öne çıkanları: oyuncu, sanatçı, centilmenlik */
+export type Highlight = { id: string; kind: string; weekOf: Date; name: string; subtitle?: string | null; story: string; photoUrl?: string | null; link?: string | null; section?: string | null; isPublished: boolean };
+
+/** Gençliğin Sesi: röportaj, köşe yazısı, fotoğraf, haber */
+export type Post = {
+  id: string; slug: string; kind: string; section: string; title: string; body: string; author: string; authorRole?: string | null; authorPhoto?: string | null;
+  photos: string[]; qa?: { q: string; a: string }[]; publishedAt: Date; isPublished: boolean;
+};
+
+export type Volunteer = { id: string; name: string; email: string; phone: string; district: string; role: string; branch?: string | null; experience?: string | null; applicationId?: string | null; active: boolean; createdAt: Date };
+export type MailDoc = { id: string; to: string; message: { subject: string; text: string; html?: string }; kind: string; refId?: string | null; createdAt: Date; delivery?: { state?: string } | null };
 export type Video = { id: string; title: string; youtubeUrl: string; category: string; description?: string | null; isFeatured: boolean; publishedAt: Date };
 export type Message = { id: string; name: string; email: string; phone?: string | null; subject: string; message: string; isRead: boolean; createdAt: Date };
 export type AdminUser = { id: string; name: string; email: string; role: string; scope: string; active: boolean; createdAt?: Date; lastLoginAt?: Date | null };

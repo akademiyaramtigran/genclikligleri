@@ -8,7 +8,7 @@ import { periodState } from "@/lib/periods";
 import { storeFile, FileError, compressImage } from "@/lib/files";
 import { errMessage } from "@/lib/form";
 import { age, dayKey, randomCode } from "@/lib/utils";
-import { DISTRICTS, WRITING_CATEGORIES, WRITING_LANGUAGES } from "@/lib/constants";
+import { DISTRICTS, VOLUNTEER_ROLES, WRITING_CATEGORIES, WRITING_LANGUAGES } from "@/lib/constants";
 import type { MusicCompetition, MusicContestant, Period } from "@/lib/types";
 
 /** Ziyaretçi işlemleri için anonim oturum (kötüye kullanımı sınırlamak için) */
@@ -40,6 +40,7 @@ const DATA_FIELDS: Record<string, string[]> = {
   MUZIK: ["type", "genre", "demoUrl", "instagram", "bio", "songs"],
   TIYATRO: ["playTitle", "playwright", "director", "genre", "durationMin", "language", "synopsis", "techNeeds", "videoUrl"],
   YAZARLIK: ["penName", "language", "workCategory", "pageCount", "synopsis", "school"],
+  GONULLU: ["role", "branch", "experience", "availability"],
 };
 
 export async function submitApplication(_prev: ApplyState, fd: FormData): Promise<ApplyState> {
@@ -50,7 +51,7 @@ export async function submitApplication(_prev: ApplyState, fd: FormData): Promis
     if (s(fd, "website")) return { ok: false, error: "Başvuru alınamadı." };
 
     const fieldErrors: Record<string, string> = {};
-    const title = s(fd, "title", 150);
+    const title = period.category === "GONULLU" ? s(fd, "applicantName", 150) : s(fd, "title", 150);
     const applicantName = s(fd, "applicantName", 100);
     const applicantEmail = s(fd, "applicantEmail", 150).toLowerCase();
     const applicantPhone = s(fd, "applicantPhone", 30);
@@ -80,6 +81,7 @@ export async function submitApplication(_prev: ApplyState, fd: FormData): Promis
       if (!data.playwright) fieldErrors.playwright = "Yazar bilgisi zorunludur.";
     }
 
+    if (period.category === "GONULLU" && !(data.role in VOLUNTEER_ROLES)) fieldErrors.role = "Görev seçiniz.";
     if (period.category === "YAZARLIK") {
       if (!data.language || !(data.language in WRITING_LANGUAGES)) fieldErrors.language = "Metnin dilini seçiniz.";
       if (!data.workCategory || !(data.workCategory in WRITING_CATEGORIES)) fieldErrors.workCategory = "Kategori seçiniz.";
@@ -91,7 +93,7 @@ export async function submitApplication(_prev: ApplyState, fd: FormData): Promis
       .filter((m) => (m.firstName ?? "").trim() || (m.lastName ?? "").trim())
       .slice(0, 60)
       .map((m) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, k === "photo" ? photoOrEmpty(v) : String(v).trim().slice(0, 120)]).filter(([, v]) => v !== "")));
-    const word = period.category === "SPOR" ? "oyuncu" : period.category === "YAZARLIK" ? "yazar" : "üye";
+    const word = period.category === "SPOR" ? "oyuncu" : period.category === "YAZARLIK" ? "yazar" : period.category === "GONULLU" ? "kişi" : "üye";
     if (period.minMembers && members.length < period.minMembers) fieldErrors.members = `En az ${period.minMembers} ${word} eklemelisiniz.`;
     if (period.maxMembers && members.length > period.maxMembers) fieldErrors.members = `En fazla ${period.maxMembers} ${word} ekleyebilirsiniz.`;
     const bad = members.findIndex((m) => !m.firstName || !m.lastName);

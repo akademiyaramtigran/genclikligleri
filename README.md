@@ -54,6 +54,17 @@ Sonraki yöneticileri panelden **Kullanıcılar** bölümünde eklersiniz (Spor 
 | Başvurular, 5 adımlı başvuru formu, takip | `/basvuru`, `/basvuru/detay?s=…`, `/basvuru/takip` |
 | Videolar, Duyurular, Tesisler, Arama, İletişim, KVKK | |
 
+### Ana sayfa ve içerik
+- **Manşet:** Duyurularda "Ana sayfa manşeti" işaretlenen en yeni haber, ana sayfanın en üstünde büyük fotoğrafla gösterilir.
+- **Haftanın Öne Çıkanları** (`/yonetim/one-cikanlar`): haftanın oyuncusu, haftanın sanatçısı, haftanın centilmenlik hareketi; paylaşım görseli indirilebilir.
+- **Gençliğin Sesi** (`/gencligin-sesi`, yönetim `/yonetim/gencligin-sesi`): röportaj, köşe yazısı (Dijital Dergi), fotoğraf ve haber akışı.
+- **Sezon Arşivi** (`/spor/arsiv`): geçmiş sezonların şampiyonları, kürsüleri, krallık liderleri.
+- **Hakem & Gönüllü** başvuru kategorisi; onaylananlar `/yonetim/gonulluler` havuzuna düşer.
+- **Canlı maç girişi** (`/yonetim/maclar/canli?id=…`): telefondan tek dokunuşla skor, oyuncu ve kart; site 20-30 sn'de bir kendini yeniler.
+- **Paylaşım görselleri** (maç, puan durumu, öne çıkanlar) ve **takvime ekle** (.ics: maç, takım fikstürü, oyun gösterimleri).
+- **E-posta kutusu** (`/yonetim/e-posta`): başvuru durumu değişince e-posta `mail` koleksiyonuna yazılır. Gönderim için Firebase Blaze planı + "Trigger Email" eklentisi bağlanmalıdır (demo modunda yalnızca sıraya alınır).
+- Önceden demo verisi yüklenmiş sitede yeni demo içerikleri yönetim panosundaki **Demo İçeriklerini Ekle** düğmesiyle eklenir.
+
 ### Dil desteği (TR · KU · ZA)
 Üst menüdeki **TR / KU / ZA** düğmesiyle site Türkçe, Kurmancî veya Zazakî gösterilir; seçim tarayıcıda hatırlanır.
 Menüler, butonlar, form etiketleri, durumlar, ay ve gün adları çevrilir. Yönetimden girilen içerik (haber, oyun özeti vb.) girildiği dilde kalır; yönetim paneli her zaman Türkçedir.

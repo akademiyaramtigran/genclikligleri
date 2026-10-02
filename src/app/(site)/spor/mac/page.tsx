@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CalendarDays, Clock, MapPin, Star, Users, Flag } from "lucide-react";
 import { getMatch, getTeamMatches } from "@/lib/data";
-import { useData, useTitle } from "@/lib/hooks";
+import { useAutoRefresh, useData, useTitle } from "@/lib/hooks";
 import { sportDef, GENDERS, MATCH_STATUS, eventDef } from "@/lib/constants";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 import { Avatar, Badge, StatusBadge, TeamCrest } from "@/components/ui";
@@ -13,6 +13,9 @@ import { MatchRow } from "@/components/sport";
 import { ErrorBox, NotFoundBox, PageLoader, Suspended, useParam } from "@/components/client";
 
 import { useT } from "@/lib/i18n";
+import { ShareImageButton, CalendarButton, pageUrl } from "@/components/tools";
+import { matchCard } from "@/lib/sharecard";
+import { slugify } from "@/lib/utils";
 export default function MatchPage() {
   return <Suspended><Inner /></Suspended>;
 }
@@ -27,6 +30,7 @@ function Inner() {
     return { match, h2h };
   }, [id]);
   useTitle(data?.match ? `${data.match.home.name} - ${data.match.away.name}` : undefined);
+  useAutoRefresh(data?.match?.status === "LIVE");
   if (error) return <ErrorBox message={error} />;
   if (data === undefined) return <PageLoader />;
   if (!data) return <NotFoundBox title={t("Maç bulunamadı")} />;
@@ -118,6 +122,10 @@ function Inner() {
             {match.venueName && <Link href={`/tesisler#${match.venueId}`} className="flex items-center gap-1.5 hover:text-white"><MapPin className="h-4 w-4" /> {match.venueName}</Link>}
             {match.referee && <span className="flex items-center gap-1.5"><Flag className="h-4 w-4" /> {t("Hakem:")} {match.referee}</span>}
             {match.attendance && <span className="flex items-center gap-1.5"><Users className="h-4 w-4" /> {match.attendance.toLocaleString("tr-TR")} {t("seyirci")}</span>}
+          </div>
+          <div className="mt-6 flex flex-wrap justify-center gap-2 [&_.btn-outline]:border-white/20 [&_.btn-outline]:bg-white/5 [&_.btn-outline]:text-white [&_.btn-outline:hover]:bg-white/10">
+            <ShareImageButton make={() => matchCard(match)} filename={`mac-${slugify(match.home.shortName)}-${slugify(match.away.shortName)}.png`} title={`${match.home.name} - ${match.away.name}`} />
+            {!done && <CalendarButton filename={`mac-${match.id}`} events={[{ uid: match.id, title: `${def.emoji} ${match.home.name} - ${match.away.name}`, start: match.date, minutes: 120, location: match.venueName, description: match.leagueName, url: pageUrl(`/spor/mac/?id=${match.id}`) }]} />}
           </div>
         </div>
       </section>

@@ -7,7 +7,7 @@ import {
 import { fdb } from "./firebase";
 import type {
   Announcement, AppStatus, League, Match, MusicCompetition, MusicContestant, MusicRound, Period, Player, Season,
-  TheatreFestival, TheatreGroup, TheatrePlay, Team, Venue, Video, WritingContest,
+  TheatreFestival, TheatreGroup, TheatrePlay, Team, Venue, Video, WritingContest, Highlight, Post,
 } from "./types";
 
 /** Firestore Timestamp → Date (iç içe nesnelerde de) */
@@ -148,6 +148,16 @@ export const getAnnouncements = () => cached("announcements", async () =>
   (await getAll<Announcement>("announcements", where("isPublished", "==", true)))
     .filter((a) => a.publishedAt <= new Date())
     .sort((a, b) => Number(b.isPinned) - Number(a.isPinned) || b.publishedAt.getTime() - a.publishedAt.getTime()));
+/** Manşet: "manşet" işaretli en yeni duyuru (yoksa kapaklı en yeni duyuru) */
+export async function getHeadline() {
+  const list = await getAnnouncements();
+  return list.filter((a) => a.isHeadline).sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime())[0] ?? null;
+}
+export const getHighlights = () => cached("highlights", async () =>
+  (await getAll<Highlight>("highlights", where("isPublished", "==", true))).sort((a, b) => b.weekOf.getTime() - a.weekOf.getTime()));
+export const getPosts = () => cached("posts", async () =>
+  (await getAll<Post>("posts", where("isPublished", "==", true))).filter((p) => p.publishedAt <= new Date()).sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()));
+export const getPost = (slug: string) => getOne<Post>("posts", slug);
 export const getAnnouncement = (slug: string) => getOne<Announcement>("announcements", slug);
 export const getVideos = () => cached("videos", async () => (await getAll<Video>("videos")).sort((a, b) => Number(b.isFeatured) - Number(a.isFeatured) || b.publishedAt.getTime() - a.publishedAt.getTime()));
 export const getGroups = () => cached("groups", async () => (await getAll<TheatreGroup>("theatreGroups")).sort((a, b) => a.name.localeCompare(b.name, "tr")));

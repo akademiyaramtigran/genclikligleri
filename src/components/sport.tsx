@@ -5,7 +5,7 @@ import { MapPin, PlayCircle } from "lucide-react";
 import type { LeaderRow, Match, StandingRow } from "@/lib/types";
 import { sportDef, MATCH_STATUS, SPORTS } from "@/lib/constants";
 import { getSeasonMatches } from "@/lib/data";
-import { useData } from "@/lib/hooks";
+import { useAutoRefresh, useData } from "@/lib/hooks";
 import { firebaseReady } from "@/lib/firebase";
 import { cn, formatShortDate, formatTime, formatWeekday } from "@/lib/utils";
 import { Avatar, Badge, FormBadge, TeamCrest } from "./ui";
@@ -226,6 +226,7 @@ export function ScoreTicker() {
   const t = useT();
   const { data } = useData(() => (firebaseReady ? getSeasonMatches() : Promise.resolve([])), []);
   const live = (data ?? []).filter((m) => m.status === "LIVE");
+  useAutoRefresh(live.length > 0, 30000);
   const recent = (data ?? []).filter((m) => m.status === "FINISHED").sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 16);
   const items = [...live, ...recent];
   if (items.length === 0) return null;

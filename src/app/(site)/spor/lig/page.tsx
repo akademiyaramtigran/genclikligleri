@@ -12,6 +12,8 @@ import { LeaderTable, MatchRow, StandingsTable } from "@/components/sport";
 import { ErrorBox, NotFoundBox, PageLoader, Suspended, useParam } from "@/components/client";
 
 import { useT } from "@/lib/i18n";
+import { ShareImageButton } from "@/components/tools";
+import { standingsCard } from "@/lib/sharecard";
 export default function LeaguePage() {
   return <Suspended><Inner /></Suspended>;
 }
@@ -106,6 +108,7 @@ function StandingsTab({ league }: { league: League }) {
     <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
       <div className="card overflow-hidden">
         {rows.length ? <StandingsTable rows={rows} sport={league.sport} /> : <EmptyState title={t("Ligde henüz takım yok")} />}
+        {rows.length > 0 && <div className="flex justify-end border-t border-basalt-100 p-3"><ShareImageButton make={() => standingsCard(league.name, rows, league.sport)} filename={`puan-durumu-${league.slug}.png`} title={league.name} /></div>}
       </div>
       <div className="card h-fit overflow-hidden">
         <h3 className="flex items-center gap-2 border-b border-basalt-100 px-4 py-3 font-semibold"><Crown className="h-4 w-4 text-amber-500" /> {t(def.scorerTitle)}</h3>
