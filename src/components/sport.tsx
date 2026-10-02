@@ -6,8 +6,10 @@ import type { LeaderRow, Match, StandingRow } from "@/lib/types";
 import { sportDef, MATCH_STATUS } from "@/lib/constants";
 import { cn, formatShortDate, formatTime, formatWeekday } from "@/lib/utils";
 import { Avatar, Badge, FormBadge, TeamCrest } from "./ui";
+import { useT } from "@/lib/i18n";
 
 export function StandingsTable({ rows, sport, compact, highlight }: { rows: StandingRow[]; sport: string; compact?: boolean; highlight?: string }) {
+  const t = useT();
   const def = sportDef(sport);
   const n = rows.length;
   return (
@@ -16,7 +18,7 @@ export function StandingsTable({ rows, sport, compact, highlight }: { rows: Stan
         <thead>
           <tr>
             <th className="w-10 text-center">#</th>
-            <th>Takım</th>
+            <th>{t("Takım")}</th>
             <th className="text-center">O</th>
             {!compact && <th className="text-center">G</th>}
             {!compact && def.allowsDraw && <th className="text-center">B</th>}
@@ -82,6 +84,7 @@ type MatchWithTeams = Pick<Match, "id" | "date" | "status" | "round" | "homeScor
 
 /** Maç satırı (fikstür listelerinde) */
 export function MatchRow({ m, showLeague }: { m: MatchWithTeams; showLeague?: boolean }) {
+  const t = useT();
   const done = m.status === "FINISHED";
   const live = m.status === "LIVE";
   const hw = done && (m.homeScore ?? 0) > (m.awayScore ?? 0);
@@ -108,14 +111,14 @@ export function MatchRow({ m, showLeague }: { m: MatchWithTeams; showLeague?: bo
           </span>
         )}
         {showLeague && <span className="mt-1 hidden text-[10px] text-basalt-400 sm:block">{m.leagueName}</span>}
-        {m.status !== "SCHEDULED" && m.status !== "FINISHED" && <span className="mt-1 text-[10px] font-semibold uppercase text-red-600">{MATCH_STATUS[m.status]?.label}</span>}
+        {m.status !== "SCHEDULED" && m.status !== "FINISHED" && <span className="mt-1 text-[10px] font-semibold uppercase text-red-600">{t(MATCH_STATUS[m.status]?.label ?? "")}</span>}
       </div>
       <div className={cn("flex items-center gap-2 text-sm", aw ? "font-bold text-basalt-900" : "text-basalt-700")}>
         <TeamCrest team={m.away} size={26} />
         <span className="truncate">{m.away.name}</span>
       </div>
       <div className="hidden justify-end sm:flex">
-        {m.youtubeUrl && <PlayCircle className="h-5 w-5 text-red-500" aria-label="Maç videosu var" />}
+        {m.youtubeUrl && <PlayCircle className="h-5 w-5 text-red-500" aria-label={t("Maç videosu var")} />}
       </div>
     </Link>
   );
@@ -123,6 +126,7 @@ export function MatchRow({ m, showLeague }: { m: MatchWithTeams; showLeague?: bo
 
 /** Kart görünümünde maç (ana sayfa, takım sayfası) */
 export function MatchCard({ m, dark }: { m: MatchWithTeams; dark?: boolean }) {
+  const t = useT();
   const done = m.status === "FINISHED";
   const def = sportDef(m.sport);
   return (
@@ -134,7 +138,7 @@ export function MatchCard({ m, dark }: { m: MatchWithTeams; dark?: boolean }) {
       )}
     >
       <div className={cn("mb-3 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider", dark ? "text-white/50" : "text-basalt-500")}>
-        <span className="truncate">{def.emoji} {m.leagueName || `${m.round}. Hafta`}</span>
+        <span className="truncate">{def.emoji} {m.leagueName || `${m.round}. ${t("Hafta")}`}</span>
         {done ? (m.youtubeUrl ? <Badge tone="red" className="!py-0">▶ Video</Badge> : <span>MS</span>) : <span>{formatWeekday(m.date)}</span>}
       </div>
       {[m.home, m.away].map((t, i) => {
@@ -162,7 +166,8 @@ export function MatchCard({ m, dark }: { m: MatchWithTeams; dark?: boolean }) {
 }
 
 export function LeaderTable({ rows, unit, empty = "Henüz veri yok", compact }: { rows: LeaderRow[]; unit: string; empty?: string; compact?: boolean }) {
-  if (rows.length === 0) return <p className="px-4 py-8 text-center text-sm text-basalt-500">{empty}</p>;
+  const t = useT();
+  if (rows.length === 0) return <p className="px-4 py-8 text-center text-sm text-basalt-500">{t(empty)}</p>;
   const max = rows[0]?.total ?? 1;
   return (
     <ol className="divide-y divide-basalt-100">
@@ -182,7 +187,7 @@ export function LeaderTable({ rows, unit, empty = "Henüz veri yok", compact }: 
             </div>
             <div className="text-right">
               <p className="font-display text-xl font-bold tabular-nums text-basalt-900">{r.total}</p>
-              <p className="text-[10px] uppercase tracking-wider text-basalt-400">{compact ? unit : `${r.perMatch} / maç`}</p>
+              <p className="text-[10px] uppercase tracking-wider text-basalt-400">{compact ? t(unit) : `${r.perMatch} / ${t("maç")}`}</p>
             </div>
           </Link>
         </li>
@@ -192,6 +197,7 @@ export function LeaderTable({ rows, unit, empty = "Henüz veri yok", compact }: 
 }
 
 export function GenderSwitch({ active, hrefFor, dark = true }: { active: "ERKEK" | "KADIN"; hrefFor: (g: "erkek" | "kadin") => string; dark?: boolean }) {
+  const t = useT();
   const items = [
     { key: "ERKEK", slug: "erkek" as const, label: "Erkekler", on: "bg-sky-500 text-white shadow-lg shadow-sky-500/30" },
     { key: "KADIN", slug: "kadin" as const, label: "Kadınlar", on: "bg-rose-500 text-white shadow-lg shadow-rose-500/30" },
@@ -205,7 +211,7 @@ export function GenderSwitch({ active, hrefFor, dark = true }: { active: "ERKEK"
           scroll={false}
           className={cn("rounded-full px-5 py-2 text-sm font-bold transition", active === it.key ? it.on : dark ? "text-white/70 hover:text-white" : "text-basalt-600 hover:text-basalt-900")}
         >
-          {it.label}
+          {t(it.label)}
         </Link>
       ))}
     </div>

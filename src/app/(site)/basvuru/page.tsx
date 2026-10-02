@@ -12,10 +12,12 @@ import { Badge, EmptyState, PageHero } from "@/components/ui";
 import { FilterChips } from "@/components/FilterBar";
 
 
+import { useT } from "@/lib/i18n";
 const CAT_STYLE: Record<string, { grad: string; tone: string; icon: string }> = {
   SPOR: { grad: "from-emerald-500 to-dicle-700", tone: "green", icon: "🏆" },
   MUZIK: { grad: "from-fuchsia-600 to-purple-900", tone: "fuchsia", icon: "🎤" },
   TIYATRO: { grad: "from-amber-600 to-curtain-900", tone: "amber", icon: "🎭" },
+  YAZARLIK: { grad: "from-rose-500 to-zinc-950", tone: "rose", icon: "✒️" },
 };
 
 export default function ApplyIndex() {
@@ -23,7 +25,8 @@ export default function ApplyIndex() {
 }
 
 function Inner() {
-  useTitle("Başvurular");
+  const t = useT();
+  useTitle(t("Başvurular"));
   const sp = { kategori: useParam("kategori") };
   const cat = sp.kategori?.toUpperCase();
   const { data, error } = useData(getPeriods, []);
@@ -37,7 +40,7 @@ function Inner() {
 
   return (
     <>
-      <PageHero eyebrow="Katılım" title="Başvuru Dönemleri" description="Takımını kur, sahneye çık, perdeyi aç. Açık başvuruları, şartları ve istenen belgeleri buradan inceleyebilirsin.">
+      <PageHero eyebrow={t("Katılım")} title={t("Başvuru Dönemleri")} description={t("Takımını kur, sahneye çık, perdeyi aç. Açık başvuruları, şartları ve istenen belgeleri buradan inceleyebilirsin.")}>
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
           {[
             [CalendarClock, "1. Dönemi seç", "Açık başvuru dönemini ve şartlarını incele."],
@@ -53,19 +56,19 @@ function Inner() {
             );
           })}
         </div>
-        <Link href="/basvuru/takip" className="btn mt-6 bg-white text-basalt-900 hover:bg-dicle-300"><Search className="h-4 w-4" /> Başvuru Takip</Link>
+        <Link href="/basvuru/takip" className="btn mt-6 bg-white text-basalt-900 hover:bg-dicle-300"><Search className="h-4 w-4" /> {t("Başvuru Takip")}</Link>
       </PageHero>
 
       <div className="container-x py-10">
         <div className="mb-8">
           <FilterChips name="kategori" basePath="/basvuru" params={{ kategori: sp.kategori }} value={sp.kategori} options={[{ value: "spor", label: "🏆 Spor" }, { value: "muzik", label: "🎤 Müzik" }, { value: "tiyatro", label: "🎭 Tiyatro" }]} />
         </div>
-        {periods.length === 0 && <EmptyState title="Yayımlanmış başvuru dönemi yok" />}
+        {periods.length === 0 && <EmptyState title={t("Yayımlanmış başvuru dönemi yok")} />}
         {(["OPEN", "UPCOMING", "CLOSED"] as PeriodState[]).map((st) =>
           groups[st].length === 0 ? null : (
             <section key={st} className="mb-12">
               <h2 className="mb-4 flex items-center gap-3 font-display text-2xl font-semibold uppercase tracking-wide">
-                {PERIOD_STATE_LABEL[st].label}
+                {t(PERIOD_STATE_LABEL[st].label ?? "")}
                 <Badge tone={PERIOD_STATE_LABEL[st].tone} dot={st === "OPEN"}>{groups[st].length}</Badge>
               </h2>
               <div className={cn("grid gap-5", st === "CLOSED" ? "md:grid-cols-2 lg:grid-cols-3" : "lg:grid-cols-2")}>
@@ -85,8 +88,8 @@ function Inner() {
                         <p className="mt-1 line-clamp-2 text-sm text-basalt-500">{p.summary}</p>
                         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-basalt-500">
                           <span className="flex items-center gap-1"><CalendarClock className="h-3.5 w-3.5" /> {formatDate(p.startDate, { day: "numeric", month: "short" })} – {formatDate(p.endDate, { day: "numeric", month: "short", year: "numeric" })}</span>
-                          <span className="flex items-center gap-1"><FileCheck2 className="h-3.5 w-3.5" /> {docs.length} belge</span>
-                          {(p.minMembers || p.maxMembers) && <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {p.minMembers ?? 1}–{p.maxMembers ?? "∞"} kişi</span>}
+                          <span className="flex items-center gap-1"><FileCheck2 className="h-3.5 w-3.5" /> {docs.length} {t("belge")}</span>
+                          {(p.minMembers || p.maxMembers) && <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {p.minMembers ?? 1}–{p.maxMembers ?? "∞"} {t("kişi")}</span>}
                         </div>
                         <div className="mt-4 flex items-center justify-between border-t border-basalt-100 pt-4">
                           <Badge tone={PERIOD_STATE_LABEL[st].tone} dot={st === "OPEN"}>

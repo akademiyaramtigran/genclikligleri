@@ -49,9 +49,19 @@ Sonraki yöneticileri panelden **Kullanıcılar** bölümünde eklersiniz (Spor 
 | Takım / Oyuncu / Maç (YouTube videosu) | `/spor/takim?s=…`, `/spor/oyuncu?s=…`, `/spor/mac?id=…` |
 | Fikstür, Krallık, Takımlar, Oyuncular | `/spor/fikstur`, `/spor/krallik`, … |
 | Müzik yarışması + halk oylaması (günde 1 oy) | `/muzik` |
-| Tiyatro festivali programı | `/tiyatro` |
+| Tiyatro festivali programı (Bazalt Afiş tasarımı) | `/tiyatro` |
+| Genç Kalemler oyun yazarlığı yarışması (Türkçe · Kurmancî · Zazakî) | `/tiyatro/yazarlik` |
 | Başvurular, 5 adımlı başvuru formu, takip | `/basvuru`, `/basvuru/detay?s=…`, `/basvuru/takip` |
 | Videolar, Duyurular, Tesisler, Arama, İletişim, KVKK | |
+
+### Dil desteği (TR · KU · ZA)
+Üst menüdeki **TR / KU / ZA** düğmesiyle site Türkçe, Kurmancî veya Zazakî gösterilir; seçim tarayıcıda hatırlanır.
+Menüler, butonlar, form etiketleri, durumlar, ay ve gün adları çevrilir. Yönetimden girilen içerik (haber, oyun özeti vb.) girildiği dilde kalır; yönetim paneli her zaman Türkçedir.
+Çeviriler `src/lib/i18n-dict.ts` dosyasındadır: `"Türkçe metin": ["Kurmancî", "Zazakî"]`. Sözlükte olmayan metin Türkçe görünür.
+> Kurmancî ve Zazakî çevirilerin anadili konuşan biri tarafından gözden geçirilmesi önerilir.
+
+### Bölüm amblemleri
+Lig/spor alanlarında **Üç Kemer** (On Gözlü Köprü + Dicle), müzikte ses dalgası, tiyatroda maske, Genç Kalemler'de kalem ucu amblemi kullanılır (`src/components/Logos.tsx`). Ana logo `src/components/Header.tsx` içindeki `Logo` bileşenidir.
 
 ### Puanlama (otomatik)
 Futbol G3-B1-M0 · Basketbol G2-M1 · Voleybol 3-0/3-1→3P, 3-2→2P, 2-3→1P · Hentbol G2-B1-M0 · ceza puanı desteği
@@ -62,6 +72,7 @@ Futbol G3-B1-M0 · Basketbol G2-M1 · Voleybol 3-0/3-1→3P, 3-2→2P, 2-3→1P 
 - Ligler, **otomatik fikstür** (round-robin, tek/çift devre), takımlar, oyuncular, maç sonucu, olay ve oyuncu istatistiği girişi
 - Müzik: tur yönetimi, jüri puanı, halk oyunu puana çevirme, **turu sonuçlandırma**
 - Tiyatro: gösterim programı, atölyeler, ödüller
+- Genç Kalemler (`/yonetim/tiyatro/yazarlik`): şartname, ödüller, takvim, dile göre jüri, eserler (kısa liste / finalist / birinci / mansiyon). "Yazarlık" kategorisinde başvuru dönemi açılır; onaylanan başvuru yarışmaya eser olarak eklenir. Tiyatro birimi yöneticileri yönetir.
 - Duyurular, videolar, mesajlar, kullanıcılar, işlem kayıtları
 
 ## Güvenlik

@@ -22,9 +22,39 @@ export function slugify(input: string) {
 
 const TZ = "Europe/Istanbul";
 
+// ───── Ay ve gün adları: Kurmancî / Zazakî (tarayıcılarda bu diller için yerel ayar yok) ─────
+const TR_MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+const TR_DAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+const NAMES: Record<string, { months: string[]; short: string[]; days: string[] }> = {
+  ku: {
+    months: ["Kanûna Paşîn", "Sibat", "Adar", "Nîsan", "Gulan", "Hezîran", "Tîrmeh", "Tebax", "Îlon", "Cotmeh", "Mijdar", "Kanûna Pêşîn"],
+    short: ["K.Paş", "Sib", "Adr", "Nîs", "Gul", "Hez", "Tîr", "Teb", "Îlo", "Cot", "Mij", "K.Pêş"],
+    days: ["Duşem", "Sêşem", "Çarşem", "Pêncşem", "În", "Şemî", "Yekşem"],
+  },
+  za: {
+    months: ["Çele", "Gucige", "Adar", "Nisane", "Gulane", "Heziran", "Temuze", "Tebaxe", "Keşkelun", "Tışrino Verên", "Tışrino Peyên", "Kanun"],
+    short: ["Çel", "Guc", "Adr", "Nis", "Gul", "Hez", "Tem", "Teb", "Keş", "T.Ve", "T.Pe", "Kan"],
+    days: ["Dışeme", "Sêşeme", "Çarşeme", "Pancşeme", "Êne", "Şeme", "Kırê"],
+  },
+};
+let dateLang = "tr";
+/** Dil seçildiğinde LangProvider çağırır */
+export function setDateLang(lang: string) { dateLang = lang; }
+
+function localize(text: string) {
+  const n = NAMES[dateLang];
+  if (!n) return text;
+  // Uzun adlar önce (Cumartesi → Cuma'dan önce), sonra kısaltmalar (Eki, Kas…)
+  let out = text;
+  TR_DAYS.map((d, i) => [d, n.days[i]!] as const).sort((a, b) => b[0].length - a[0].length).forEach(([tr, x]) => { out = out.replaceAll(tr, x); });
+  TR_MONTHS.forEach((m, i) => { out = out.replaceAll(m, n.months[i]!); });
+  TR_MONTHS.forEach((m, i) => { out = out.replace(new RegExp(`(^|[\\s.])${m.slice(0, 3)}(?=$|[\\s.,])`, "g"), `$1${n.short[i]!}`); });
+  return out;
+}
+
 export function formatDate(d: Date | string | null | undefined, opts: Intl.DateTimeFormatOptions = {}) {
   if (!d) return "—";
-  return new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric", timeZone: TZ, ...opts }).format(new Date(d));
+  return localize(new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric", timeZone: TZ, ...opts }).format(new Date(d)));
 }
 
 export function formatDateTime(d: Date | string | null | undefined) {
@@ -36,11 +66,11 @@ export function formatTime(d: Date | string) {
 }
 
 export function formatShortDate(d: Date | string) {
-  return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "short", timeZone: TZ }).format(new Date(d));
+  return localize(new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "short", timeZone: TZ }).format(new Date(d)));
 }
 
 export function formatWeekday(d: Date | string) {
-  return new Intl.DateTimeFormat("tr-TR", { weekday: "long", timeZone: TZ }).format(new Date(d));
+  return localize(new Intl.DateTimeFormat("tr-TR", { weekday: "long", timeZone: TZ }).format(new Date(d)));
 }
 
 /** İstanbul saatine göre YYYY-MM-DD */

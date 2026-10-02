@@ -11,6 +11,7 @@ import { FilterChips } from "@/components/FilterBar";
 import { YouTubeEmbed, YouTubeThumb } from "@/components/YouTubeEmbed";
 
 
+import { useT } from "@/lib/i18n";
 type Item = { key: string; title: string; url: string; category: string; date: Date; sub?: string; href?: string };
 
 export default function VideosPage() {
@@ -18,7 +19,8 @@ export default function VideosPage() {
 }
 
 function Inner() {
-  useTitle("Video Arşivi");
+  const t = useT();
+  useTitle(t("Video Arşivi"));
   const sp = { kategori: useParam("kategori"), v: useParam("v") };
   const { data, error } = useData(async () => {
     const [videos, matches, comp, fest] = await Promise.all([getVideos(), getSeasonMatches(), getCurrentCompetition(), getCurrentFestival()]);
@@ -43,12 +45,12 @@ function Inner() {
 
   return (
     <>
-      <PageHero eyebrow="YouTube Arşivi" title="Video Arşivi" description="Organizasyondaki tüm maçlar, performanslar ve oyunlar kayıt altına alınıp burada yayınlanır." />
+      <PageHero eyebrow={t("YouTube Arşivi")} title={t("Video Arşivi")} description={t("Organizasyondaki tüm maçlar, performanslar ve oyunlar kayıt altına alınıp burada yayınlanır.")} />
       <div className="container-x py-10">
         <div className="mb-8">
           <FilterChips name="kategori" basePath="/videolar" params={{ kategori: sp.kategori }} value={sp.kategori} options={[{ value: "spor", label: "⚽ Maçlar" }, { value: "muzik", label: "🎤 Müzik" }, { value: "tiyatro", label: "🎭 Tiyatro" }, { value: "genel", label: "Genel" }]} />
         </div>
-        {filtered.length === 0 ? <EmptyState title="Bu kategoride video yok" icon="🎬" /> : (
+        {filtered.length === 0 ? <EmptyState title={t("Bu kategoride video yok")} icon="🎬" /> : (
           <>
             {current && (
               <div className="mb-10 grid gap-6 lg:grid-cols-[1fr_20rem]">
@@ -58,7 +60,7 @@ function Inner() {
                   <h2 className="mt-2 text-xl font-semibold">{current.title}</h2>
                   {current.sub && <p className="mt-1 text-sm text-basalt-500">{current.sub}</p>}
                   <p className="mt-3 text-xs text-basalt-400">{formatDate(current.date)}</p>
-                  {current.href && <Link href={current.href} className="btn-outline mt-4 w-full">Detay Sayfası</Link>}
+                  {current.href && <Link href={current.href} className="btn-outline mt-4 w-full">{t("Detay Sayfası")}</Link>}
                 </div>
               </div>
             )}

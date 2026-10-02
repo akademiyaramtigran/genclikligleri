@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   LayoutDashboard, Inbox, CalendarRange, Megaphone, Video, Mail, Trophy, Shield, Users, CalendarDays, MapPin,
-  Mic2, ListMusic, Drama, Theater, UserCog, History, Menu, X, ExternalLink, LogOut, KeyRound,
+  Mic2, ListMusic, Drama, Theater, UserCog, History, Menu, X, ExternalLink, LogOut, KeyRound, PenLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/Header";
@@ -42,6 +42,7 @@ export function AdminNav({ user, counts }: { user: { name: string; role: string;
     { title: "Tiyatro", unit: "TIYATRO", items: [
       { href: "/yonetim/tiyatro", label: "Festival & Program", icon: Theater },
       { href: "/yonetim/tiyatro/oyunlar", label: "Topluluklar & Oyunlar", icon: Drama },
+      { href: "/yonetim/tiyatro/yazarlik", label: "Genç Kalemler", icon: PenLine },
     ] },
     { title: "Sistem", superOnly: true, items: [
       { href: "/yonetim/kullanicilar", label: "Kullanıcılar", icon: UserCog },

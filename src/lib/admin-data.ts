@@ -2,18 +2,19 @@
 
 import { orderBy, limit, where } from "firebase/firestore";
 import { getAll } from "./data";
+import { unitCategories } from "./constants";
 import type { AdminUser, Application, LogEntry, Match, Message, Period } from "./types";
 
 const scoped = (admin: AdminUser) => admin.role !== "SUPER_ADMIN" && admin.scope !== "ALL";
 
 /** Yöneticinin yetkili olduğu başvurular (kurallar kapsam dışını okumaya izin vermez) */
 export async function getApplications(admin: AdminUser) {
-  const list = scoped(admin) ? await getAll<Application>("applications", where("category", "==", admin.scope)) : await getAll<Application>("applications");
+  const list = scoped(admin) ? await getAll<Application>("applications", where("category", "in", unitCategories(admin.scope))) : await getAll<Application>("applications");
   return list.sort((a, b) => (b.createdAt?.getTime?.() ?? 0) - (a.createdAt?.getTime?.() ?? 0));
 }
 
 export async function getAllPeriods(admin: AdminUser) {
-  const list = scoped(admin) ? await getAll<Period>("periods", where("category", "==", admin.scope)) : await getAll<Period>("periods");
+  const list = scoped(admin) ? await getAll<Period>("periods", where("category", "in", unitCategories(admin.scope))) : await getAll<Period>("periods");
   return list.sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
 }
 

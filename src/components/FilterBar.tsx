@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 /** URL parametreleriyle çalışan basit filtre çipleri (sunucu bileşeni) */
 export function FilterChips({
@@ -19,6 +22,7 @@ export function FilterChips({
     const q = sp.toString();
     return q ? `${basePath}?${q}` : basePath;
   };
+  const t = useT();
   const all = allLabel ? [{ value: "", label: allLabel }, ...options] : options;
   return (
     <div className="scrollbar-none -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
@@ -27,7 +31,7 @@ export function FilterChips({
         return (
           <Link key={o.value || "all"} href={href(o.value || undefined)} scroll={false}
             className={cn("shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition", on ? "bg-basalt-900 text-white" : "bg-white text-basalt-600 ring-1 ring-basalt-200 hover:ring-basalt-300")}>
-            {o.label}
+            {t(o.label)}
           </Link>
         );
       })}

@@ -219,9 +219,14 @@ export const CATEGORIES = {
   SPOR: { key: "SPOR", label: "Spor", color: "emerald" },
   MUZIK: { key: "MUZIK", label: "Müzik", color: "fuchsia" },
   TIYATRO: { key: "TIYATRO", label: "Tiyatro", color: "amber" },
+  YAZARLIK: { key: "YAZARLIK", label: "Yazarlık", color: "rose" },
 } as const;
 
 export type CategoryKey = keyof typeof CATEGORIES;
+
+/** Başvuru kategorisinin bağlı olduğu yönetim birimi (yazarlık yarışmasını tiyatro birimi yönetir) */
+export const CATEGORY_UNIT: Record<CategoryKey, "SPOR" | "MUZIK" | "TIYATRO"> = { SPOR: "SPOR", MUZIK: "MUZIK", TIYATRO: "TIYATRO", YAZARLIK: "TIYATRO" };
+export const unitCategories = (unit: string) => (Object.keys(CATEGORY_UNIT) as CategoryKey[]).filter((c) => CATEGORY_UNIT[c] === unit);
 
 export const APPLICATION_STATUS: Record<string, { label: string; tone: string; description: string }> = {
   PENDING: { label: "Alındı", tone: "slate", description: "Başvurunuz sisteme kaydedildi, inceleme sırasına alındı." },
@@ -253,6 +258,12 @@ export const DEFAULT_DOCS: Record<CategoryKey, RequiredDoc[]> = {
     { key: "kadro", label: "Oyuncu ve teknik ekip listesi", required: true },
     { key: "kayit", label: "Prova / önceki oyun video kaydı bağlantısı", required: false },
     { key: "afis", label: "Oyun afişi", required: false },
+  ],
+  YAZARLIK: [
+    { key: "metin", label: "Oyun metni (PDF veya Word)", required: true, hint: "Metnin üzerinde adınız olmasın; yalnızca eser adı ve rumuz yazın" },
+    { key: "ozgunluk", label: "İmzalı özgünlük beyanı", required: true, hint: "Metnin size ait olduğunu ve daha önce yayımlanmadığını beyan edin" },
+    { key: "kimlik", label: "Kimlik fotokopisi", required: true },
+    { key: "veli", label: "18 yaş altı için veli izin belgesi", required: false },
   ],
 };
 
@@ -289,6 +300,29 @@ export const SHOW_STATUS: Record<string, { label: string; tone: string }> = {
   SOLD_OUT: { label: "Kapasite Doldu", tone: "red" },
   DONE: { label: "Sahnelendi", tone: "zinc" },
   CANCELLED: { label: "İptal", tone: "zinc" },
+};
+
+// ───────── Genç Kalemler — oyun yazarlığı yarışması ─────────
+
+export const WRITING_LANGUAGES: Record<string, string> = { TR: "Türkçe", KU: "Kurmancî", ZA: "Zazakî" };
+export const WRITING_CATEGORIES: Record<string, string> = { UZUN: "Uzun oyun", KISA: "Kısa oyun", COCUK: "Çocuk oyunu" };
+export const WRITING_CATEGORY_HINT: Record<string, string> = { UZUN: "40 dakika ve üzeri", KISA: "10–30 dakika", COCUK: "Çocuklar için, her uzunlukta" };
+
+export const WRITING_STATUS: Record<string, { label: string; tone: string }> = {
+  PLANNED: { label: "Yakında", tone: "slate" },
+  OPEN: { label: "Başvurular Açık", tone: "rose" },
+  JURY: { label: "Jüri Değerlendirmesinde", tone: "amber" },
+  FINAL: { label: "Finalistler Açıklandı", tone: "fuchsia" },
+  COMPLETED: { label: "Sonuçlandı", tone: "zinc" },
+};
+
+export const ENTRY_STATUS: Record<string, { label: string; tone: string; public: boolean }> = {
+  SUBMITTED: { label: "Değerlendirmede", tone: "slate", public: false },
+  SHORTLIST: { label: "Kısa Liste", tone: "blue", public: true },
+  FINALIST: { label: "Finalist", tone: "amber", public: true },
+  WINNER: { label: "Birinci", tone: "yellow", public: true },
+  MENTION: { label: "Mansiyon", tone: "fuchsia", public: true },
+  OUT: { label: "Elendi", tone: "zinc", public: false },
 };
 
 export const FESTIVAL_STATUS: Record<string, { label: string; tone: string }> = {

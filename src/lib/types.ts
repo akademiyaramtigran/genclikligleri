@@ -85,6 +85,15 @@ export type TheatreGroup = { id: string; slug: string; name: string; district: s
 export type Show = { id: string; date: Date; venueId?: string | null; venueName?: string | null; ticketInfo: string; status: string };
 export type TheatrePlay = { id: string; slug: string; festivalId: string; groupId: string; groupName: string; groupSlug: string; title: string; playwright: string; director: string; genre: string; durationMin?: number | null; ageLimit?: string | null; language: string; synopsis?: string | null; cast: { name: string; role: string }[]; posterUrl?: string | null; youtubeUrl?: string | null; inCompetition: boolean; shows: Show[]; createdAt?: Date };
 
+export type WritingEntry = { id: string; title: string; author: string; penName?: string | null; language: string; category: string; status: string; district?: string | null; synopsis?: string | null; juryNote?: string | null; applicationId?: string | null };
+export type WritingJury = { name: string; title: string; language: string };
+export type WritingStep = { title: string; date?: Date | null; text?: string | null };
+export type WritingContest = {
+  id: string; slug: string; name: string; edition: string; tagline?: string | null; description?: string | null; rules?: string | null;
+  deadline: Date; status: string; isCurrent: boolean; minAge?: number | null; maxAge?: number | null; prizes: string[]; timeline: WritingStep[];
+  jury: WritingJury[]; entries: WritingEntry[]; youtubeUrl?: string | null; createdAt?: Date;
+};
+
 export type Announcement = { id: string; slug: string; title: string; excerpt: string; content: string; category: string; coverUrl?: string | null; isPinned: boolean; isPublished: boolean; publishedAt: Date };
 export type Video = { id: string; title: string; youtubeUrl: string; category: string; description?: string | null; isFeatured: boolean; publishedAt: Date };
 export type Message = { id: string; name: string; email: string; phone?: string | null; subject: string; message: string; isRead: boolean; createdAt: Date };

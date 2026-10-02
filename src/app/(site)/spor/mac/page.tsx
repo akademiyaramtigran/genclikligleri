@@ -12,11 +12,13 @@ import { Countdown } from "@/components/Countdown";
 import { MatchRow } from "@/components/sport";
 import { ErrorBox, NotFoundBox, PageLoader, Suspended, useParam } from "@/components/client";
 
+import { useT } from "@/lib/i18n";
 export default function MatchPage() {
   return <Suspended><Inner /></Suspended>;
 }
 
 function Inner() {
+  const t = useT();
   const id = useParam("id") ?? "";
   const { data, error } = useData(async () => {
     const match = await getMatch(id);
@@ -27,7 +29,7 @@ function Inner() {
   useTitle(data?.match ? `${data.match.home.name} - ${data.match.away.name}` : undefined);
   if (error) return <ErrorBox message={error} />;
   if (data === undefined) return <PageLoader />;
-  if (!data) return <NotFoundBox title="Maç bulunamadı" />;
+  if (!data) return <NotFoundBox title={t("Maç bulunamadı")} />;
   const { match, h2h } = data;
   const def = sportDef(match.sport);
   const done = match.status === "FINISHED";
@@ -62,14 +64,14 @@ function Inner() {
         <div className="container-x relative py-10">
           <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-white/70">
             <Link href={`/spor/lig?s=${match.leagueSlug}`} className="font-semibold hover:text-white">{def.emoji} {match.leagueName}</Link>
-            <span>·</span><span>{match.round}. Hafta</span>
+            <span>·</span><span>{match.round}{t(". Hafta")}</span>
             <span>·</span><span>{GENDERS[match.gender as "ERKEK"]?.league}</span>
           </div>
           <div className="mt-8 grid grid-cols-[1fr_auto_1fr] items-center gap-4 sm:gap-10">
             <Link href={`/spor/takim?s=${homeTeam.slug}`} className="group flex flex-col items-center gap-3 text-center">
               <TeamCrest team={homeTeam} size={88} className="ring-4 transition group-hover:scale-105" />
               <span className="font-display text-lg font-semibold uppercase tracking-wide sm:text-2xl">{homeTeam.name}</span>
-              <span className="text-xs uppercase tracking-wider text-white/50">Ev Sahibi</span>
+              <span className="text-xs uppercase tracking-wider text-white/50">{t("Ev Sahibi")}</span>
             </Link>
             <div className="text-center">
               {done || live ? (
@@ -94,7 +96,7 @@ function Inner() {
             <Link href={`/spor/takim?s=${awayTeam.slug}`} className="group flex flex-col items-center gap-3 text-center">
               <TeamCrest team={awayTeam} size={88} className="ring-4 transition group-hover:scale-105" />
               <span className="font-display text-lg font-semibold uppercase tracking-wide sm:text-2xl">{awayTeam.name}</span>
-              <span className="text-xs uppercase tracking-wider text-white/50">Deplasman</span>
+              <span className="text-xs uppercase tracking-wider text-white/50">{t("Deplasman")}</span>
             </Link>
           </div>
 
@@ -114,8 +116,8 @@ function Inner() {
             <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> {formatDate(match.date)}</span>
             <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {formatTime(match.date)}</span>
             {match.venueName && <Link href={`/tesisler#${match.venueId}`} className="flex items-center gap-1.5 hover:text-white"><MapPin className="h-4 w-4" /> {match.venueName}</Link>}
-            {match.referee && <span className="flex items-center gap-1.5"><Flag className="h-4 w-4" /> Hakem: {match.referee}</span>}
-            {match.attendance && <span className="flex items-center gap-1.5"><Users className="h-4 w-4" /> {match.attendance.toLocaleString("tr-TR")} seyirci</span>}
+            {match.referee && <span className="flex items-center gap-1.5"><Flag className="h-4 w-4" /> {t("Hakem:")} {match.referee}</span>}
+            {match.attendance && <span className="flex items-center gap-1.5"><Users className="h-4 w-4" /> {match.attendance.toLocaleString("tr-TR")} {t("seyirci")}</span>}
           </div>
         </div>
       </section>
@@ -123,28 +125,28 @@ function Inner() {
       <div className="container-x grid gap-8 py-10 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-8">
           <div>
-            <h2 className="mb-4 font-display text-xl font-semibold uppercase tracking-wide">Maç Videosu</h2>
+            <h2 className="mb-4 font-display text-xl font-semibold uppercase tracking-wide">{t("Maç Videosu")}</h2>
             {match.youtubeUrl ? (
               <YouTubeEmbed url={match.youtubeUrl} title={`${homeTeam.name} - ${awayTeam.name}`} />
             ) : (
               <div className="flex aspect-video flex-col items-center justify-center rounded-2xl bg-basalt-900 text-center text-white/60">
                 <p className="text-4xl">🎬</p>
                 <p className="mt-2 font-semibold text-white">{done ? "Maç videosu yakında yüklenecek" : "Maç kaydı karşılaşmanın ardından yayınlanacak"}</p>
-                <p className="mt-1 text-sm">Tüm maçlar kayıt altına alınıp YouTube kanalımızda yayınlanır.</p>
+                <p className="mt-1 text-sm">{t("Tüm maçlar kayıt altına alınıp YouTube kanalımızda yayınlanır.")}</p>
               </div>
             )}
           </div>
 
           {match.summary && (
             <div className="card p-6">
-              <h2 className="mb-2 font-semibold">Maç Özeti</h2>
+              <h2 className="mb-2 font-semibold">{t("Maç Özeti")}</h2>
               <p className="whitespace-pre-line text-sm leading-relaxed text-basalt-600">{match.summary}</p>
             </div>
           )}
 
           {timeline.length > 0 && (
             <div className="card p-6">
-              <h2 className="mb-5 font-semibold">Maç Akışı</h2>
+              <h2 className="mb-5 font-semibold">{t("Maç Akışı")}</h2>
               <ol className="relative space-y-3 before:absolute before:inset-y-0 before:left-1/2 before:w-px before:bg-basalt-200">
                 {timeline.map((e) => {
                   const home = e.teamId === match.homeTeamId;
@@ -153,7 +155,7 @@ function Inner() {
                     <li key={e.id} className={cn("relative flex items-center gap-3", home ? "flex-row" : "flex-row-reverse")}>
                       <div className={cn("w-1/2 text-sm", home ? "pr-8 text-right" : "pl-8 text-left")}>
                         <span className="font-semibold">{e.playerName || "—"}</span>
-                        <span className="ml-2 text-basalt-500">{d?.label}</span>
+                        <span className="ml-2 text-basalt-500">{t(d?.label ?? "")}</span>
                       </div>
                       <span className={cn("absolute left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold ring-4 ring-white",
                         d?.tone === "goal" ? "bg-emerald-500 text-white" : d?.tone === "card-yellow" ? "bg-yellow-400 text-yellow-950" : d?.tone === "card-red" ? "bg-red-600 text-white" : "bg-basalt-200 text-basalt-700")}>
@@ -168,14 +170,14 @@ function Inner() {
 
           {done && def.key !== "FUTBOL" && (
             <div className="grid gap-6 md:grid-cols-2">
-              {[homeTeam, awayTeam].map((t) => {
-                const rows = playerStats(t.id);
+              {[homeTeam, awayTeam].map((tm) => {
+                const rows = playerStats(tm.id);
                 return (
-                  <div key={t.id} className="card overflow-hidden">
-                    <h3 className="flex items-center gap-2 border-b border-basalt-100 px-4 py-3 font-semibold"><TeamCrest team={t} size={24} /> {t.name}</h3>
+                  <div key={tm.id} className="card overflow-hidden">
+                    <h3 className="flex items-center gap-2 border-b border-basalt-100 px-4 py-3 font-semibold"><TeamCrest team={tm} size={24} /> {tm.name}</h3>
                     <div className="overflow-x-auto">
                       <table className="table-base">
-                        <thead><tr><th>Oyuncu</th>{statBoards.map((b) => <th key={b.key} className="text-center">{b.short}</th>)}</tr></thead>
+                        <thead><tr><th>{t("Oyuncu")}</th>{statBoards.map((b) => <th key={b.key} className="text-center">{b.short}</th>)}</tr></thead>
                         <tbody>
                           {rows.map((r) => (
                             <tr key={r.slug}>
@@ -183,7 +185,7 @@ function Inner() {
                               {statBoards.map((b) => <td key={b.key} className="text-center tabular-nums">{r.values[b.key] ?? "–"}</td>)}
                             </tr>
                           ))}
-                          {rows.length === 0 && <tr><td colSpan={statBoards.length + 1} className="text-center text-basalt-400">Veri girilmedi</td></tr>}
+                          {rows.length === 0 && <tr><td colSpan={statBoards.length + 1} className="text-center text-basalt-400">{t("Veri girilmedi")}</td></tr>}
                         </tbody>
                       </table>
                     </div>
@@ -197,7 +199,7 @@ function Inner() {
         <aside className="space-y-6">
           {match.mvpPlayerId && match.mvpName && (
             <Link href={`/spor/oyuncu?s=${match.mvpPlayerId}`} className="block overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-5 text-amber-950 shadow-lg transition hover:-translate-y-0.5">
-              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest"><Star className="h-4 w-4 fill-current" /> Maçın Oyuncusu</p>
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest"><Star className="h-4 w-4 fill-current" /> {t("Maçın Oyuncusu")}</p>
               <div className="mt-3 flex items-center gap-3">
                 <Avatar name={match.mvpName} size={56} className="ring-2 ring-white" />
                 <p className="font-display text-xl font-semibold uppercase">{match.mvpName}</p>
@@ -206,13 +208,13 @@ function Inner() {
           )}
           {done && def.key === "FUTBOL" && (
             <div className="card p-5">
-              <h3 className="mb-3 font-semibold">Kartlar</h3>
-              {[homeTeam, awayTeam].map((t) => {
-                const cards = match.events.filter((e) => e.teamId === t.id && e.type.endsWith("_CARD"));
+              <h3 className="mb-3 font-semibold">{t("Kartlar")}</h3>
+              {[homeTeam, awayTeam].map((tm) => {
+                const cards = match.events.filter((e) => e.teamId === tm.id && e.type.endsWith("_CARD"));
                 return (
-                  <div key={t.id} className="mb-3 last:mb-0">
-                    <p className="text-xs font-semibold text-basalt-500">{t.name}</p>
-                    {cards.length === 0 ? <p className="text-sm text-basalt-400">Kart yok</p> : cards.map((c) => (
+                  <div key={tm.id} className="mb-3 last:mb-0">
+                    <p className="text-xs font-semibold text-basalt-500">{tm.name}</p>
+                    {cards.length === 0 ? <p className="text-sm text-basalt-400">{t("Kart yok")}</p> : cards.map((c) => (
                       <p key={c.id} className="text-sm">{c.type === "RED_CARD" ? "🟥" : "🟨"} {c.playerName} {c.minute ? `${c.minute}'` : ""}</p>
                     ))}
                   </div>
@@ -221,10 +223,10 @@ function Inner() {
             </div>
           )}
           <div className="card overflow-hidden">
-            <h3 className="border-b border-basalt-100 px-4 py-3 font-semibold">Aralarındaki Maçlar</h3>
-            {h2h.length === 0 ? <p className="p-4 text-sm text-basalt-500">İki takım ilk kez karşılaşıyor.</p> : <div className="divide-y divide-basalt-100">{h2h.map((m) => <MatchRow key={m.id} m={m} />)}</div>}
+            <h3 className="border-b border-basalt-100 px-4 py-3 font-semibold">{t("Aralarındaki Maçlar")}</h3>
+            {h2h.length === 0 ? <p className="p-4 text-sm text-basalt-500">{t("İki takım ilk kez karşılaşıyor.")}</p> : <div className="divide-y divide-basalt-100">{h2h.map((m) => <MatchRow key={m.id} m={m} />)}</div>}
           </div>
-          <Badge tone="slate">Maç kodu: {match.id.slice(-8).toUpperCase()}</Badge>
+          <Badge tone="slate">{t("Maç kodu:")} {match.id.slice(-8).toUpperCase()}</Badge>
         </aside>
       </div>
     </>

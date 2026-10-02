@@ -5,14 +5,15 @@ import Link from "next/link";
 import { AlertCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, FileUp, Loader2, Plus, Trash2, Upload, UserPlus, Copy } from "lucide-react";
 import { submitApplication, type ApplyState, type Member } from "@/actions/public";
 import { cn } from "@/lib/utils";
-import { DISTRICTS, MUSIC_GENRES, THEATRE_GENRES, SPORTS, type SportKey } from "@/lib/constants";
+import { DISTRICTS, MUSIC_GENRES, THEATRE_GENRES, SPORTS, WRITING_CATEGORIES, WRITING_CATEGORY_HINT, WRITING_LANGUAGES, type SportKey } from "@/lib/constants";
 import { MAX_DOC_MB as MAX_UPLOAD_MB } from "@/lib/files";
 import type { RequiredDoc } from "@/lib/types";
 
+import { useT } from "@/lib/i18n";
 type PeriodProps = {
   id: string;
   title: string;
-  category: "SPOR" | "MUZIK" | "TIYATRO";
+  category: "SPOR" | "MUZIK" | "TIYATRO" | "YAZARLIK";
   sport?: string | null;
   gender?: string | null;
   minMembers?: number | null;
@@ -24,6 +25,7 @@ type PeriodProps = {
 const STEPS = ["Başvuru Sahibi", "Bilgiler", "Kadro", "Belgeler", "Onay"];
 
 export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: RequiredDoc[] }) {
+  const t = useT();
   const [state, action, pending] = useActionState<ApplyState, FormData>(submitApplication, null);
   const [step, setStep] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
@@ -35,7 +37,8 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
   const fe = state && !state.ok ? state.fieldErrors ?? {} : {};
   const sportDef = period.sport ? SPORTS[period.sport as SportKey] : null;
   const isSport = period.category === "SPOR";
-  const memberWord = isSport ? "Oyuncu" : "Üye";
+  const isWriting = period.category === "YAZARLIK";
+  const memberWord = isSport ? "Oyuncu" : isWriting ? "Yazar" : "Üye";
 
   useEffect(() => {
     if (state && !state.ok && state.fieldErrors) {
@@ -49,14 +52,14 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
       <div className="card overflow-hidden text-center">
         <div className="bg-gradient-to-br from-emerald-500 to-dicle-600 px-6 py-10 text-white">
           <CheckCircle2 className="mx-auto h-16 w-16" />
-          <h2 className="mt-4 font-display text-3xl font-semibold uppercase">Başvurunuz Alındı!</h2>
+          <h2 className="mt-4 font-display text-3xl font-semibold uppercase">{t("Başvurunuz Alındı!")}</h2>
           <p className="mt-2 text-white/85">{period.title}</p>
         </div>
         <div className="p-8">
-          <p className="text-sm text-basalt-500">Başvuru takip kodunuz</p>
+          <p className="text-sm text-basalt-500">{t("Başvuru takip kodunuz")}</p>
           <div className="mt-2 flex items-center justify-center gap-2">
             <p className="rounded-xl bg-basalt-900 px-6 py-3 font-mono text-3xl font-bold tracking-[0.2em] text-white">{state.trackingCode}</p>
-            <button type="button" onClick={() => { navigator.clipboard?.writeText(state.trackingCode); setCopied(true); }} className="btn-outline" aria-label="Kodu kopyala">
+            <button type="button" onClick={() => { navigator.clipboard?.writeText(state.trackingCode); setCopied(true); }} className="btn-outline" aria-label={t("Kodu kopyala")}>
               {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
             </button>
           </div>
@@ -65,8 +68,8 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
             Organizasyon komitesi başvurunuzu inceledikten sonra sizinle iletişime geçecektir.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link href={`/basvuru/takip?kod=${state.trackingCode}`} className="btn-primary">Başvuru Durumunu Gör</Link>
-            <Link href="/basvuru" className="btn-outline">Diğer Başvurular</Link>
+            <Link href={`/basvuru/takip?kod=${state.trackingCode}`} className="btn-primary">{t("Başvuru Durumunu Gör")}</Link>
+            <Link href="/basvuru" className="btn-outline">{t("Diğer Başvurular")}</Link>
           </div>
         </div>
       </div>
@@ -130,19 +133,19 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
       <div className="p-6 sm:p-8">
         {/* 1. Başvuru sahibi */}
         <div ref={(el) => { stepRefs.current[0] = el; }} className={cn("space-y-5", step !== 0 && "hidden")}>
-          <StepTitle n={1} title="Başvuru Sahibi" desc="Başvurudan sorumlu, 18 yaşını doldurmuş kişinin bilgileri." />
+          <StepTitle n={1} title={t("Başvuru Sahibi")} desc="Başvurudan sorumlu, 18 yaşını doldurmuş kişinin bilgileri." />
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Ad Soyad" required>{<input name="applicantName" required minLength={3} className="input" autoComplete="name" />}{err("applicantName")}</Field>
-            <Field label="Görevi">
+            <Field label={t("Ad Soyad")} required>{<input name="applicantName" required minLength={3} className="input" autoComplete="name" />}{err("applicantName")}</Field>
+            <Field label={t("Görevi")}>
               <select name="applicantRole" className="input">
-                {(isSport ? ["Takım Sorumlusu", "Antrenör", "Kulüp Başkanı", "Öğretmen"] : period.category === "MUZIK" ? ["Solist", "Grup Sorumlusu", "Menajer", "Veli"] : ["Yönetmen", "Topluluk Sorumlusu", "Öğretmen", "Yapımcı"]).map((r) => <option key={r}>{r}</option>)}
+                {(isSport ? ["Takım Sorumlusu", "Antrenör", "Kulüp Başkanı", "Öğretmen"] : period.category === "MUZIK" ? ["Solist", "Grup Sorumlusu", "Menajer", "Veli"] : isWriting ? ["Yazar", "Veli", "Öğretmen"] : ["Yönetmen", "Topluluk Sorumlusu", "Öğretmen", "Yapımcı"]).map((r) => <option key={r}>{r}</option>)}
               </select>
             </Field>
-            <Field label="E-posta" required>{<input name="applicantEmail" type="email" required className="input" autoComplete="email" />}{err("applicantEmail")}</Field>
-            <Field label="Telefon" required>{<input name="applicantPhone" type="tel" required pattern={"[\\d\\s+\\(\\)\\-]{10,}"} placeholder="05xx xxx xx xx" className="input" autoComplete="tel" />}{err("applicantPhone")}</Field>
-            <Field label="İlçe" required>
+            <Field label={t("E-posta")} required>{<input name="applicantEmail" type="email" required className="input" autoComplete="email" />}{err("applicantEmail")}</Field>
+            <Field label={t("Telefon")} required>{<input name="applicantPhone" type="tel" required pattern={"[\\d\\s+\\(\\)\\-]{10,}"} placeholder={t("05xx xxx xx xx")} className="input" autoComplete="tel" />}{err("applicantPhone")}</Field>
+            <Field label={t("İlçe")} required>
               <select name="district" required className="input" defaultValue="">
-                <option value="" disabled>Seçiniz</option>
+                <option value="" disabled>{t("Seçiniz")}</option>
                 {DISTRICTS.map((d) => <option key={d}>{d}</option>)}
               </select>
               {err("district")}
@@ -154,68 +157,88 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
         <div ref={(el) => { stepRefs.current[1] = el; }} className={cn("space-y-5", step !== 1 && "hidden")}>
           {isSport && (
             <>
-              <StepTitle n={2} title="Takım Bilgileri" desc={`${sportDef ? `${sportDef.emoji} ${sportDef.label}` : "Spor"} ligine katılacak takımın bilgileri.`} />
+              <StepTitle n={2} title={t("Takım Bilgileri")} desc={`${sportDef ? `${sportDef.emoji} ${t(sportDef.label)}` : "Spor"} ligine katılacak takımın bilgileri.`} />
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Takım Adı" required>{<input name="title" required className="input" placeholder="ör. Dağkapı Gençlik SK" />}{err("title")}</Field>
+                <Field label={t("Takım Adı")} required>{<input name="title" required className="input" placeholder={t("ör. Dağkapı Gençlik SK")} />}{err("title")}</Field>
                 <Field label="Kısa Ad (3 harf)">{<input name="shortName" maxLength={4} className="input uppercase" placeholder="DGK" />}</Field>
                 {!period.sport && (
-                  <Field label="Branş" required>
-                    <select name="sport" required className="input">{Object.values(SPORTS).map((s) => <option key={s.key} value={s.key}>{s.emoji} {s.label}</option>)}</select>
+                  <Field label={t("Branş")} required>
+                    <select name="sport" required className="input">{Object.values(SPORTS).map((s) => <option key={s.key} value={s.key}>{s.emoji} {t(s.label)}</option>)}</select>
                   </Field>
                 )}
                 {!period.gender && (
-                  <Field label="Lig Kategorisi" required>
-                    <select name="gender" required className="input" defaultValue=""><option value="" disabled>Seçiniz</option><option value="ERKEK">Erkekler</option><option value="KADIN">Kadınlar</option></select>
+                  <Field label={t("Lig Kategorisi")} required>
+                    <select name="gender" required className="input" defaultValue=""><option value="" disabled>{t("Seçiniz")}</option><option value="ERKEK">{t("Erkekler")}</option><option value="KADIN">{t("Kadınlar")}</option></select>
                     {err("gender")}
                   </Field>
                 )}
-                <Field label="Antrenör Adı Soyadı" required>{<input name="coachName" required className="input" />}{err("coachName")}</Field>
-                <Field label="Antrenör Telefonu">{<input name="coachPhone" type="tel" className="input" />}</Field>
-                <Field label="Kuruluş Yılı">{<input name="foundedYear" type="number" min={1950} max={2030} className="input" />}</Field>
-                <Field label="Tercih Edilen İç Saha / Salon">{<input name="homeVenue" className="input" />}</Field>
+                <Field label={t("Antrenör Adı Soyadı")} required>{<input name="coachName" required className="input" />}{err("coachName")}</Field>
+                <Field label={t("Antrenör Telefonu")}>{<input name="coachPhone" type="tel" className="input" />}</Field>
+                <Field label={t("Kuruluş Yılı")}>{<input name="foundedYear" type="number" min={1950} max={2030} className="input" />}</Field>
+                <Field label={t("Tercih Edilen İç Saha / Salon")}>{<input name="homeVenue" className="input" />}</Field>
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="Ana Renk">{<input name="primaryColor" type="color" defaultValue="#0f766e" className="h-11 w-full cursor-pointer rounded-xl border border-basalt-200" />}</Field>
-                  <Field label="İkinci Renk">{<input name="secondaryColor" type="color" defaultValue="#ffffff" className="h-11 w-full cursor-pointer rounded-xl border border-basalt-200" />}</Field>
+                  <Field label={t("Ana Renk")}>{<input name="primaryColor" type="color" defaultValue="#0f766e" className="h-11 w-full cursor-pointer rounded-xl border border-basalt-200" />}</Field>
+                  <Field label={t("İkinci Renk")}>{<input name="secondaryColor" type="color" defaultValue="#ffffff" className="h-11 w-full cursor-pointer rounded-xl border border-basalt-200" />}</Field>
                 </div>
               </div>
-              <Field label="Takımınızı kısaca tanıtın">{<textarea name="note" rows={3} className="input" placeholder="Takımın hikâyesi, hedefleri…" />}</Field>
+              <Field label={t("Takımınızı kısaca tanıtın")}>{<textarea name="note" rows={3} className="input" placeholder={t("Takımın hikâyesi, hedefleri…")} />}</Field>
             </>
           )}
           {period.category === "MUZIK" && (
             <>
-              <StepTitle n={2} title="Sanatçı / Grup Bilgileri" desc="Sahnede görünecek isminiz ve müziğiniz hakkında." />
+              <StepTitle n={2} title={t("Sanatçı / Grup Bilgileri")} desc="Sahnede görünecek isminiz ve müziğiniz hakkında." />
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Sahne Adı / Grup Adı" required>{<input name="title" required className="input" />}{err("title")}</Field>
-                <Field label="Katılım Şekli" required>
-                  <select name="type" className="input"><option value="SOLO">Solo</option><option value="GRUP">Grup</option></select>
+                <Field label={t("Sahne Adı / Grup Adı")} required>{<input name="title" required className="input" />}{err("title")}</Field>
+                <Field label={t("Katılım Şekli")} required>
+                  <select name="type" className="input"><option value="SOLO">{t("Solo")}</option><option value="GRUP">{t("Grup")}</option></select>
                 </Field>
-                <Field label="Müzik Türü" required>
-                  <select name="genre" required className="input" defaultValue=""><option value="" disabled>Seçiniz</option>{MUSIC_GENRES.map((g) => <option key={g}>{g}</option>)}</select>
+                <Field label={t("Müzik Türü")} required>
+                  <select name="genre" required className="input" defaultValue=""><option value="" disabled>{t("Seçiniz")}</option>{MUSIC_GENRES.map((g) => <option key={g}>{g}</option>)}</select>
                   {err("genre")}
                 </Field>
-                <Field label="Demo / Performans Videosu (YouTube)">{<input name="demoUrl" type="url" placeholder="https://youtube.com/…" className="input" />}</Field>
-                <Field label="Instagram">{<input name="instagram" className="input" placeholder="@kullaniciadi" />}</Field>
-                <Field label="Yorumlamak istediğiniz eserler">{<input name="songs" className="input" placeholder="Eser 1, Eser 2" />}</Field>
+                <Field label="Demo / Performans Videosu (YouTube)">{<input name="demoUrl" type="url" placeholder={t("https://youtube.com/…")} className="input" />}</Field>
+                <Field label={t("Instagram")}>{<input name="instagram" className="input" placeholder={t("@kullaniciadi")} />}</Field>
+                <Field label={t("Yorumlamak istediğiniz eserler")}>{<input name="songs" className="input" placeholder={t("Eser 1, Eser 2")} />}</Field>
               </div>
-              <Field label="Kendinizi tanıtın">{<textarea name="bio" rows={4} className="input" placeholder="Müzik geçmişiniz, ilham kaynaklarınız…" />}</Field>
+              <Field label={t("Kendinizi tanıtın")}>{<textarea name="bio" rows={4} className="input" placeholder={t("Müzik geçmişiniz, ilham kaynaklarınız…")} />}</Field>
+            </>
+          )}
+          {isWriting && (
+            <>
+              <StepTitle n={2} title={t("Eser Bilgileri")} desc="Genç Kalemler oyun yazarlığı yarışmasına göndereceğiniz metin." />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label={t("Eserin Adı")} required>{<input name="title" required className="input" />}{err("title")}</Field>
+                <Field label={t("Rumuz")}>{<input name="penName" className="input" placeholder={t("Jüri metni bu adla okur")} />}</Field>
+                <Field label={t("Metnin Dili")} required>
+                  <select name="language" required className="input" defaultValue=""><option value="" disabled>{t("Seçiniz")}</option>{Object.entries(WRITING_LANGUAGES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+                  {err("language")}
+                </Field>
+                <Field label={t("Kategori")} required>
+                  <select name="workCategory" required className="input" defaultValue=""><option value="" disabled>{t("Seçiniz")}</option>{Object.entries(WRITING_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v} ({WRITING_CATEGORY_HINT[k]})</option>)}</select>
+                  {err("workCategory")}
+                </Field>
+                <Field label={t("Sayfa Sayısı")}>{<input name="pageCount" type="number" min={1} max={500} className="input" />}</Field>
+                <Field label={t("Okul / Meslek")}>{<input name="school" className="input" />}</Field>
+              </div>
+              <Field label={t("Eserin Kısa Özeti")}>{<textarea name="synopsis" rows={4} className="input" placeholder={t("Konu, karakterler, sahne düzeni…")} />}</Field>
             </>
           )}
           {period.category === "TIYATRO" && (
             <>
-              <StepTitle n={2} title="Topluluk & Oyun Bilgileri" desc="Festivalde sahnelemek istediğiniz oyun." />
+              <StepTitle n={2} title={t("Topluluk & Oyun Bilgileri")} desc="Festivalde sahnelemek istediğiniz oyun." />
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Topluluk Adı" required>{<input name="title" required className="input" />}{err("title")}</Field>
-                <Field label="Oyunun Adı" required>{<input name="playTitle" required className="input" />}{err("playTitle")}</Field>
-                <Field label="Yazar" required>{<input name="playwright" required className="input" />}{err("playwright")}</Field>
-                <Field label="Yönetmen">{<input name="director" className="input" />}</Field>
-                <Field label="Tür">
+                <Field label={t("Topluluk Adı")} required>{<input name="title" required className="input" />}{err("title")}</Field>
+                <Field label={t("Oyunun Adı")} required>{<input name="playTitle" required className="input" />}{err("playTitle")}</Field>
+                <Field label={t("Yazar")} required>{<input name="playwright" required className="input" />}{err("playwright")}</Field>
+                <Field label={t("Yönetmen")}>{<input name="director" className="input" />}</Field>
+                <Field label={t("Tür")}>
                   <select name="genre" className="input">{THEATRE_GENRES.map((g) => <option key={g}>{g}</option>)}</select>
                 </Field>
                 <Field label="Süre (dakika)">{<input name="durationMin" type="number" min={10} max={240} className="input" />}</Field>
-                <Field label="Oyun Dili">{<input name="language" defaultValue="Türkçe" className="input" />}</Field>
-                <Field label="Prova / Oyun Videosu">{<input name="videoUrl" type="url" className="input" placeholder="https://youtube.com/…" />}</Field>
+                <Field label={t("Oyun Dili")}>{<input name="language" defaultValue="Türkçe" className="input" />}</Field>
+                <Field label={t("Prova / Oyun Videosu")}>{<input name="videoUrl" type="url" className="input" placeholder={t("https://youtube.com/…")} />}</Field>
               </div>
-              <Field label="Oyunun Özeti">{<textarea name="synopsis" rows={4} className="input" />}</Field>
+              <Field label={t("Oyunun Özeti")}>{<textarea name="synopsis" rows={4} className="input" />}</Field>
               <Field label="Teknik İhtiyaçlar (ışık, ses, dekor)">{<textarea name="techNeeds" rows={2} className="input" />}</Field>
             </>
           )}
@@ -223,7 +246,7 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
 
         {/* 3. Kadro */}
         <div ref={(el) => { stepRefs.current[2] = el; }} className={cn("space-y-5", step !== 2 && "hidden")}>
-          <StepTitle n={3} title={isSport ? "Oyuncu Listesi" : period.category === "MUZIK" ? "Sanatçı / Grup Üyeleri" : "Oyuncu & Teknik Ekip"}
+          <StepTitle n={3} title={isSport ? "Oyuncu Listesi" : period.category === "MUZIK" ? "Sanatçı / Grup Üyeleri" : isWriting ? "Yazar Bilgileri" : "Oyuncu & Teknik Ekip"}
             desc={`${period.minMembers ? `En az ${period.minMembers}` : ""}${period.minMembers && period.maxMembers ? ", " : ""}${period.maxMembers ? `en fazla ${period.maxMembers}` : ""} kişi.${period.minAge || period.maxAge ? ` Yaş aralığı: ${period.minAge ?? "—"}–${period.maxAge ?? "—"}.` : ""}`} />
           {err("members")}
           <div className="space-y-3">
@@ -232,24 +255,24 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-basalt-500">{i + 1}. {memberWord}</span>
                   {members.length > 1 && (
-                    <button type="button" onClick={() => setMembers((l) => l.filter((_, idx) => idx !== i))} className="rounded-lg p-1.5 text-basalt-400 hover:bg-red-50 hover:text-red-600" aria-label="Kişiyi sil"><Trash2 className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => setMembers((l) => l.filter((_, idx) => idx !== i))} className="rounded-lg p-1.5 text-basalt-400 hover:bg-red-50 hover:text-red-600" aria-label={t("Kişiyi sil")}><Trash2 className="h-4 w-4" /></button>
                   )}
                 </div>
                 <div className={cn("grid gap-3", isSport ? "sm:grid-cols-2 lg:grid-cols-6" : "sm:grid-cols-4")}>
-                  <input value={m.firstName ?? ""} onChange={(e) => setMember(i, "firstName", e.target.value)} placeholder="Ad *" className={cn("input", isSport && "lg:col-span-1")} />
-                  <input value={m.lastName ?? ""} onChange={(e) => setMember(i, "lastName", e.target.value)} placeholder="Soyad *" className="input" />
-                  <input type="date" value={m.birthDate ?? ""} onChange={(e) => setMember(i, "birthDate", e.target.value)} className="input" title="Doğum tarihi" aria-label="Doğum tarihi" />
+                  <input value={m.firstName ?? ""} onChange={(e) => setMember(i, "firstName", e.target.value)} placeholder={t("Ad *")} className={cn("input", isSport && "lg:col-span-1")} />
+                  <input value={m.lastName ?? ""} onChange={(e) => setMember(i, "lastName", e.target.value)} placeholder={t("Soyad *")} className="input" />
+                  <input type="date" value={m.birthDate ?? ""} onChange={(e) => setMember(i, "birthDate", e.target.value)} className="input" title={t("Doğum tarihi")} aria-label={t("Doğum tarihi")} />
                   {isSport ? (
                     <>
                       <select value={m.position ?? ""} onChange={(e) => setMember(i, "position", e.target.value)} className="input">
-                        <option value="">Mevki</option>
+                        <option value="">{t("Mevki")}</option>
                         {(sportDef?.positions ?? Object.values(SPORTS).flatMap((s) => s.positions)).map((p) => <option key={p}>{p}</option>)}
                       </select>
-                      <input type="number" min={0} max={99} value={m.jerseyNumber ?? ""} onChange={(e) => setMember(i, "jerseyNumber", e.target.value)} placeholder="Forma No" className="input" />
-                      <input value={m.identityNo ?? ""} onChange={(e) => setMember(i, "identityNo", e.target.value.replace(/\D/g, "").slice(0, 11))} inputMode="numeric" placeholder="T.C. Kimlik No" className="input" />
+                      <input type="number" min={0} max={99} value={m.jerseyNumber ?? ""} onChange={(e) => setMember(i, "jerseyNumber", e.target.value)} placeholder={t("Forma No")} className="input" />
+                      <input value={m.identityNo ?? ""} onChange={(e) => setMember(i, "identityNo", e.target.value.replace(/\D/g, "").slice(0, 11))} inputMode="numeric" placeholder={t("T.C. Kimlik No")} className="input" />
                     </>
                   ) : (
-                    <input value={m.role ?? ""} onChange={(e) => setMember(i, "role", e.target.value)} placeholder={period.category === "MUZIK" ? "Rol (vokal, gitar…)" : "Rol (oyuncu, ışık…)"} className="input" />
+                    <input value={m.role ?? ""} onChange={(e) => setMember(i, "role", e.target.value)} placeholder={period.category === "MUZIK" ? "Rol (vokal, gitar…)" : isWriting ? "Ortak yazar / tek yazar" : "Rol (oyuncu, ışık…)"} className="input" />
                   )}
                 </div>
               </div>
@@ -260,16 +283,16 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
               <UserPlus className="h-4 w-4" /> {memberWord} Ekle
             </button>
             {isSport && (
-              <button type="button" onClick={() => setMembers((l) => [...l, ...Array.from({ length: 5 }, () => ({}))].slice(0, period.maxMembers ?? 60))} className="btn-ghost"><Plus className="h-4 w-4" /> 5 satır ekle</button>
+              <button type="button" onClick={() => setMembers((l) => [...l, ...Array.from({ length: 5 }, () => ({}))].slice(0, period.maxMembers ?? 60))} className="btn-ghost"><Plus className="h-4 w-4" /> {t("5 satır ekle")}</button>
             )}
-            <span className="text-sm text-basalt-500">{members.filter((m) => m.firstName && m.lastName).length} kişi eklendi</span>
+            <span className="text-sm text-basalt-500">{members.filter((m) => m.firstName && m.lastName).length} {t("kişi eklendi")}</span>
           </div>
-          {isSport && <p className="hint">T.C. kimlik numaraları yalnızca lisans işlemleri için kullanılır, sitede yayımlanmaz ve yalnızca yetkili yöneticiler tarafından görülebilir.</p>}
+          {isSport && <p className="hint">{t("T.C. kimlik numaraları yalnızca lisans işlemleri için kullanılır, sitede yayımlanmaz ve yalnızca yetkili yöneticiler tarafından görülebilir.")}</p>}
         </div>
 
         {/* 4. Belgeler */}
         <div ref={(el) => { stepRefs.current[3] = el; }} className={cn("space-y-5", step !== 3 && "hidden")}>
-          <StepTitle n={4} title="İstenen Belgeler" desc={`PDF, JPG, PNG, ZIP, MP3 veya Word. Dosya başına en fazla ${MAX_UPLOAD_MB} MB.`} />
+          <StepTitle n={4} title={t("İstenen Belgeler")} desc={`PDF, JPG, PNG, ZIP, MP3 veya Word. Dosya başına en fazla ${MAX_UPLOAD_MB} MB.`} />
           <div className="space-y-3">
             {docs.map((d) => (
               <label key={d.key} className={cn("flex cursor-pointer flex-col gap-3 rounded-2xl border-2 border-dashed p-4 transition sm:flex-row sm:items-center", fileNames[d.key] ? "border-emerald-300 bg-emerald-50/50" : fe[`doc_${d.key}`] ? "border-red-300 bg-red-50/50" : "border-basalt-200 hover:border-dicle-400 hover:bg-dicle-500/5")}>
@@ -277,7 +300,7 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
                   {fileNames[d.key] ? <Check className="h-5 w-5" /> : <FileUp className="h-5 w-5" />}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-medium text-basalt-900">{d.label} {d.required ? <span className="text-red-500">*</span> : <span className="text-xs font-normal text-basalt-400">(isteğe bağlı)</span>}</span>
+                  <span className="block font-medium text-basalt-900">{t(d.label)} {d.required ? <span className="text-red-500">*</span> : <span className="text-xs font-normal text-basalt-400">(isteğe bağlı)</span>}</span>
                   <span className="block truncate text-xs text-basalt-500">{fileNames[d.key] ?? d.hint ?? "Dosya seçmek için tıklayın"}</span>
                   {err(`doc_${d.key}`)}
                 </span>
@@ -298,9 +321,9 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
 
         {/* 5. Onay */}
         <div ref={(el) => { stepRefs.current[4] = el; }} className={cn("space-y-5", step !== 4 && "hidden")}>
-          <StepTitle n={5} title="Onay ve Gönderim" desc="Göndermeden önce bilgilerinizi kontrol edin." />
+          <StepTitle n={5} title={t("Onay ve Gönderim")} desc="Göndermeden önce bilgilerinizi kontrol edin." />
           <div className="rounded-2xl bg-basalt-50 p-5 text-sm text-basalt-700">
-            <p><strong>{members.filter((m) => m.firstName && m.lastName).length}</strong> {memberWord.toLowerCase()} · <strong>{Object.values(fileNames).filter(Boolean).length}</strong> / {docs.length} belge yüklendi</p>
+            <p><strong>{members.filter((m) => m.firstName && m.lastName).length}</strong> {memberWord.toLowerCase()} · <strong>{Object.values(fileNames).filter(Boolean).length}</strong> / {docs.length} {t("belge yüklendi")}</p>
           </div>
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" name="rules" required className="mt-0.5 h-5 w-5 rounded border-basalt-300 accent-dicle-600" />
@@ -309,19 +332,19 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
           {err("rules")}
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" name="kvkk" required className="mt-0.5 h-5 w-5 rounded border-basalt-300 accent-dicle-600" />
-            <span><Link href="/kvkk" target="_blank" className="link">KVKK Aydınlatma Metni</Link>&apos;ni okudum; kişisel verilerin organizasyon kapsamında işlenmesine açık rıza veriyorum. 18 yaş altı katılımcılar için veli onayı alınmıştır.</span>
+            <span><Link href="/kvkk" target="_blank" className="link">{t("KVKK Aydınlatma Metni")}</Link>&apos;ni okudum; kişisel verilerin organizasyon kapsamında işlenmesine açık rıza veriyorum. 18 yaş altı katılımcılar için veli onayı alınmıştır.</span>
           </label>
           {err("kvkk")}
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t border-basalt-100 bg-basalt-50 px-6 py-4">
-        <button type="button" onClick={prev} disabled={step === 0} className="btn-ghost"><ChevronLeft className="h-4 w-4" /> Geri</button>
-        <span className="text-xs text-basalt-500">Adım {step + 1} / {STEPS.length}</span>
+        <button type="button" onClick={prev} disabled={step === 0} className="btn-ghost"><ChevronLeft className="h-4 w-4" /> {t("Geri")}</button>
+        <span className="text-xs text-basalt-500">{t("Adım")} {step + 1} / {STEPS.length}</span>
         {step < STEPS.length - 1 ? (
-          <button type="button" onClick={next} className="btn-primary">İleri <ChevronRight className="h-4 w-4" /></button>
+          <button type="button" onClick={next} className="btn-primary">{t("İleri")} <ChevronRight className="h-4 w-4" /></button>
         ) : (
-          <button type="submit" disabled={pending} className="btn-accent">{pending ? <><Loader2 className="h-4 w-4 animate-spin" /> Gönderiliyor…</> : <>Başvuruyu Gönder <Check className="h-4 w-4" /></>}</button>
+          <button type="submit" disabled={pending} className="btn-accent">{pending ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("Gönderiliyor…")}</> : <>{t("Başvuruyu Gönder")} <Check className="h-4 w-4" /></>}</button>
         )}
       </div>
     </form>
@@ -331,16 +354,17 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
 function stepHasErrorFor(fe: Record<string, string>, i: number) {
   const keys = Object.keys(fe);
   if (i === 0) return keys.some((k) => ["applicantName", "applicantEmail", "applicantPhone", "district"].includes(k));
-  if (i === 1) return keys.some((k) => ["title", "gender", "coachName", "genre", "playTitle", "playwright"].includes(k));
+  if (i === 1) return keys.some((k) => ["title", "gender", "coachName", "genre", "playTitle", "playwright", "language", "workCategory"].includes(k));
   if (i === 2) return !!fe.members;
   if (i === 3) return keys.some((k) => k.startsWith("doc_"));
   return !!fe.kvkk || !!fe.rules;
 }
 
 function StepTitle({ n, title, desc }: { n: number; title: string; desc?: string }) {
+  const t = useT();
   return (
     <div className="mb-2">
-      <p className="text-xs font-bold uppercase tracking-widest text-dicle-600">Adım {n}</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-dicle-600">{t("Adım")} {n}</p>
       <h3 className="font-display text-2xl font-semibold uppercase tracking-wide">{title}</h3>
       {desc && <p className="mt-1 text-sm text-basalt-500">{desc}</p>}
     </div>

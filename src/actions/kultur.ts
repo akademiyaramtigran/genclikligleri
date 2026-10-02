@@ -5,7 +5,7 @@ import { getAll, getOne, countOf } from "@/lib/data";
 import { requireAdmin, logActivity, uniqueId, ref, newRef, changed, batchWrite, batchDelete } from "@/lib/admin";
 import { type ActionResult, ok, fail, str, optStr, int, num, bool, dt, dateOnly, errMessage } from "@/lib/form";
 import { imageField } from "./spor";
-import type { MusicCompetition, MusicContestant, MusicRound, Performance, TheatreFestival, TheatreGroup, TheatrePlay, Venue } from "@/lib/types";
+import type { MusicCompetition, MusicContestant, MusicRound, Performance, TheatreFestival, TheatreGroup, TheatrePlay, Venue, WritingContest, WritingEntry } from "@/lib/types";
 
 const wrap = (fn: () => Promise<ActionResult>) => fn().catch((e) => fail(errMessage(e)));
 const uid = () => crypto.randomUUID().slice(0, 8);
@@ -341,4 +341,94 @@ export const saveWorkshop = (_p: ActionResult, fd: FormData) => wrap(async () =>
   await updateDoc(ref("theatreFestivals", festivalId), { workshops: [...f.workshops, ws].sort((a, b) => +new Date(a.date) - +new Date(b.date)) });
   changed();
   return ok("Etkinlik eklendi.");
+});
+
+// ═════════════ GENÇ KALEMLER — YAZARLIK YARIŞMASI ═════════════
+
+/** "Başlık | YYYY-AA-GG | açıklama" satırlarını takvime çevirir */
+function parseTimeline(text: string) {
+  return text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+    const [title = "", date = "", ...rest] = l.split("|").map((x) => x.trim());
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T12:00:00+03:00`) : null;
+    return { title, date: d, text: (d ? rest.join(" | ") : [date, ...rest].filter(Boolean).join(" | ")) || null };
+  });
+}
+
+export const saveWritingContest = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin("TIYATRO");
+  const id = str(fd, "id");
+  const name = str(fd, "name", 120), edition = str(fd, "edition", 20);
+  const deadline = dt(fd, "deadline");
+  if (!name || !edition || !deadline) return fail("Ad, dönem ve son başvuru tarihi zorunludur.");
+  const isCurrent = bool(fd, "isCurrent");
+  const data = {
+    name, edition, deadline, isCurrent, status: str(fd, "status") || "PLANNED",
+    tagline: optStr(fd, "tagline", 300), description: optStr(fd, "description", 5000), rules: optStr(fd, "rules", 10000),
+    minAge: int(fd, "minAge"), maxAge: int(fd, "maxAge"), youtubeUrl: optStr(fd, "youtubeUrl", 300),
+    prizes: str(fd, "prizes", 3000).split(/\r?\n/).map((l) => l.trim()).filter(Boolean),
+    timeline: parseTimeline(str(fd, "timeline", 5000)),
+  };
+  let cid = id;
+  if (!id) cid = await uniqueId("writingContests", `${name} ${deadline.getFullYear()}`);
+  if (isCurrent) {
+    const all = await getAll<WritingContest>("writingContests");
+    await batchWrite(all.filter((c) => c.id !== cid && c.isCurrent).map((c) => ({ ref: ref("writingContests", c.id), data: { isCurrent: false }, merge: true })));
+  }
+  if (id) await updateDoc(ref("writingContests", id), data);
+  else await setDoc(ref("writingContests", cid), { ...data, slug: cid, jury: [], entries: [], createdAt: new Date() });
+  await logActivity(admin, id ? "GUNCELLE" : "OLUSTUR", "Yazarlık Yarışması", cid, name);
+  changed();
+  return ok(id ? "Yarışma güncellendi." : "Yarışma oluşturuldu.", id ? undefined : `/yonetim/tiyatro/yazarlik?c=${cid}`);
+});
+
+export const saveWritingJury = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  await requireAdmin("TIYATRO");
+  const contestId = str(fd, "contestId");
+  const c = await getOne<WritingContest>("writingContests", contestId);
+  if (!c) return fail("Yarışma bulunamadı.");
+  if (str(fd, "remove") !== "") {
+    const idx = Number(str(fd, "remove"));
+    await updateDoc(ref("writingContests", contestId), { jury: c.jury.filter((_, i) => i !== idx) });
+    changed();
+    return ok("Silindi.");
+  }
+  const name = str(fd, "name", 80), title = str(fd, "title", 120), language = str(fd, "language") || "TR";
+  if (!name) return fail("Ad zorunludur.");
+  await updateDoc(ref("writingContests", contestId), { jury: [...c.jury, { name, title, language }] });
+  changed();
+  return ok("Jüri üyesi eklendi.");
+});
+
+export const saveWritingEntry = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin("TIYATRO");
+  const contestId = str(fd, "contestId");
+  const c = await getOne<WritingContest>("writingContests", contestId);
+  if (!c) return fail("Yarışma bulunamadı.");
+  const entryId = str(fd, "entryId");
+  if (str(fd, "remove")) {
+    await updateDoc(ref("writingContests", contestId), { entries: c.entries.filter((e) => e.id !== str(fd, "remove")) });
+    changed();
+    return ok("Eser silindi.");
+  }
+  const current = entryId ? c.entries.find((e) => e.id === entryId) : undefined;
+  // Yalnızca durum / jüri notu güncellemesi (liste satırından)
+  if (current && !fd.has("title")) {
+    const patch: Partial<WritingEntry> = { status: str(fd, "status") || current.status };
+    if (fd.has("juryNote")) patch.juryNote = optStr(fd, "juryNote", 1000);
+    await updateDoc(ref("writingContests", contestId), { entries: c.entries.map((e) => (e.id === entryId ? { ...e, ...patch } : e)) });
+    await logActivity(admin, "GUNCELLE", "Yazarlık Eseri", contestId, `${current.title}: ${patch.status}`);
+    changed();
+    return ok("Eser güncellendi.");
+  }
+  const title = str(fd, "title", 150), author = str(fd, "author", 150);
+  if (!title || !author) return fail("Eser adı ve yazar zorunludur.");
+  const entry: WritingEntry = {
+    id: current?.id ?? uid(), title, author, penName: optStr(fd, "penName", 80), language: str(fd, "language") || "TR", category: str(fd, "category") || "KISA",
+    status: str(fd, "status") || "SUBMITTED", district: optStr(fd, "district", 50), synopsis: optStr(fd, "synopsis", 2000), juryNote: optStr(fd, "juryNote", 1000),
+    applicationId: current?.applicationId ?? null,
+  };
+  const entries = current ? c.entries.map((e) => (e.id === entry.id ? entry : e)) : [...c.entries, entry];
+  await updateDoc(ref("writingContests", contestId), { entries });
+  changed();
+  return ok(current ? "Eser güncellendi." : "Eser eklendi.");
 });

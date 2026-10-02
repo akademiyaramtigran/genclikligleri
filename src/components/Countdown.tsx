@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 function diff(target: number) {
   const ms = Math.max(0, target - Date.now());
@@ -15,6 +16,7 @@ function diff(target: number) {
 }
 
 export function Countdown({ to, className, dark = true, label }: { to: string | Date; className?: string; dark?: boolean; label?: string }) {
+  const tr = useT();
   const target = new Date(to).getTime();
   const [t, setT] = useState<ReturnType<typeof diff> | null>(null);
   useEffect(() => {
@@ -30,7 +32,7 @@ export function Countdown({ to, className, dark = true, label }: { to: string | 
         {cells.map(([k, v]) => (
           <div key={k} className={cn("min-w-[3.5rem] rounded-xl px-2 py-2 text-center", dark ? "bg-white/10 ring-1 ring-white/15" : "bg-basalt-100")}>
             <div className={cn("font-display text-2xl font-semibold tabular-nums", dark ? "text-white" : "text-basalt-900")}>{v == null ? "--" : String(v).padStart(2, "0")}</div>
-            <div className={cn("text-[10px] uppercase tracking-wider", dark ? "text-white/50" : "text-basalt-500")}>{k}</div>
+            <div className={cn("text-[10px] uppercase tracking-wider", dark ? "text-white/50" : "text-basalt-500")}>{tr(k)}</div>
           </div>
         ))}
       </div>

@@ -9,11 +9,13 @@ import { age, cn, formatDate, formatShortDate } from "@/lib/utils";
 import { Avatar, Badge, KeyValue, StatusBadge, TeamCrest } from "@/components/ui";
 import { ErrorBox, NotFoundBox, PageLoader, Suspended, useParam } from "@/components/client";
 
+import { useT } from "@/lib/i18n";
 export default function PlayerPage() {
   return <Suspended><Inner /></Suspended>;
 }
 
 function Inner() {
+  const t = useT();
   const slug = useParam("s") ?? "";
   const { data, error } = useData(async () => {
     const player = await getPlayer(slug);
@@ -25,7 +27,7 @@ function Inner() {
   useTitle(data?.player ? `${data.player.firstName} ${data.player.lastName}` : undefined);
   if (error) return <ErrorBox message={error} />;
   if (data === undefined) return <PageLoader />;
-  if (!data) return <NotFoundBox title="Oyuncu bulunamadı" />;
+  if (!data) return <NotFoundBox title={t("Oyuncu bulunamadı")} />;
   const { player, team, matches, league } = data;
   const sport = team?.sport ?? player.sport ?? "FUTBOL";
   const def = sportDef(sport);
@@ -49,9 +51,9 @@ function Inner() {
           <Avatar name={name} src={player.photoUrl} size={144} color={color} className="ring-4 ring-white/20" />
           <div className="flex-1">
             <div className="flex flex-wrap gap-2">
-              <Badge tone="dark">{def.emoji} {def.label}</Badge>
+              <Badge tone="dark">{def.emoji} {t(def.label ?? "")}</Badge>
               {player.position && <Badge tone="dark">{player.position}</Badge>}
-              {player.isCaptain && <Badge tone="yellow">Kaptan</Badge>}
+              {player.isCaptain && <Badge tone="yellow">{t("Kaptan")}</Badge>}
               {player.status !== "ACTIVE" && <StatusBadge map={PLAYER_STATUS} value={player.status} />}
             </div>
             <h1 className="mt-3 font-display text-5xl font-semibold uppercase leading-none tracking-wide sm:text-6xl">
@@ -78,7 +80,7 @@ function Inner() {
       <div className="container-x grid gap-8 py-10 lg:grid-cols-[20rem_1fr]">
         <aside className="space-y-6">
           <div className="card p-5">
-            <h2 className="mb-2 font-semibold">Oyuncu Kartı</h2>
+            <h2 className="mb-2 font-semibold">{t("Oyuncu Kartı")}</h2>
             <KeyValue items={[
               ["Forma No", player.jerseyNumber ?? "—"],
               ["Mevki", player.position],
@@ -92,28 +94,28 @@ function Inner() {
               ["Lig", league ? <Link key="l" href={`/spor/lig?s=${league.slug}`} className="link">{league.name}</Link> : "—"],
             ]} />
           </div>
-          {player.bio && <div className="card p-5 text-sm leading-relaxed text-basalt-600"><h2 className="mb-2 font-semibold text-basalt-900">Hakkında</h2>{player.bio}</div>}
+          {player.bio && <div className="card p-5 text-sm leading-relaxed text-basalt-600"><h2 className="mb-2 font-semibold text-basalt-900">{t("Hakkında")}</h2>{player.bio}</div>}
         </aside>
 
         <div className="space-y-8">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             <div className="card relative overflow-hidden p-4">
               <div className={cn("absolute inset-0 bg-gradient-to-br opacity-10", def.gradient)} />
-              <p className="relative text-xs font-medium uppercase tracking-wider text-basalt-500">{def.scorerUnit}</p>
+              <p className="relative text-xs font-medium uppercase tracking-wider text-basalt-500">{t(def.scorerUnit)}</p>
               <p className="relative mt-2 font-display text-4xl font-bold">{scored}</p>
               <p className="relative text-xs text-basalt-500">{teamMatches ? `${(scored / teamMatches).toFixed(1)} / maç` : "—"}</p>
             </div>
             {statCards.map((s) => (
-              <div key={s.label} className="card p-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-basalt-500">{s.label}</p>
+              <div key={t(s.label ?? "")} className="card p-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-basalt-500">{t(s.label ?? "")}</p>
                 <p className="mt-2 font-display text-4xl font-bold">{s.value}</p>
               </div>
             ))}
           </div>
 
           <div className="card overflow-hidden">
-            <h2 className="border-b border-basalt-100 px-5 py-3 font-semibold">Maç Maç Performans</h2>
-            {finished.length === 0 ? <p className="p-8 text-center text-sm text-basalt-500">Henüz istatistik kaydı bulunmuyor.</p> : (
+            <h2 className="border-b border-basalt-100 px-5 py-3 font-semibold">{t("Maç Maç Performans")}</h2>
+            {finished.length === 0 ? <p className="p-8 text-center text-sm text-basalt-500">{t("Henüz istatistik kaydı bulunmuyor.")}</p> : (
               <div className="divide-y divide-basalt-100">
                 {finished.map((match) => {
                   const items = match.events.filter((e) => e.playerId === player.id);

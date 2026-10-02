@@ -14,6 +14,7 @@ import { YouTubeEmbed } from "@/components/YouTubeEmbed";
 import { VoteButton } from "./VoteButton";
 
 
+import { useT } from "@/lib/i18n";
 const GRADS = ["from-fuchsia-600 to-purple-900", "from-cyan-500 to-blue-900", "from-pink-500 to-rose-900", "from-violet-500 to-indigo-900", "from-amber-500 to-orange-900", "from-emerald-500 to-teal-900"];
 
 export default function MusicPage() {
@@ -21,7 +22,8 @@ export default function MusicPage() {
 }
 
 function Inner() {
-  useTitle("Genç Sesler Müzik Yarışması");
+  const t = useT();
+  useTitle(t("Genç Sesler Müzik Yarışması"));
   const tur = useParam("tur");
   const { data, error } = useData(async () => {
     const [competition, periods] = await Promise.all([getCurrentCompetition(), getPeriods()]);
@@ -38,7 +40,7 @@ function Inner() {
   if (!comp) {
     return (
       <div className="min-h-[60vh] bg-[#0b0614] py-20 text-white">
-        <div className="container-x"><EmptyState dark title="Yeni yarışma sezonu yakında" description="Başvuru dönemi açıldığında duyuracağız." icon="🎤" /></div>
+        <div className="container-x"><EmptyState dark title={t("Yeni yarışma sezonu yakında")} description={t("Başvuru dönemi açıldığında duyuracağız.")} icon="🎤" /></div>
       </div>
     );
   }
@@ -91,7 +93,7 @@ function Inner() {
 
           {nextRound && (
             <div className="mx-auto mt-10 inline-flex flex-col items-center gap-4 rounded-3xl bg-gradient-to-r from-fuchsia-600/20 to-cyan-500/20 px-8 py-6 ring-1 ring-white/15">
-              <p className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="h-4 w-4 text-amber-300" /> Sıradaki: {nextRound.name}</p>
+              <p className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="h-4 w-4 text-amber-300" /> {t("Sıradaki:")} {nextRound.name}</p>
               <Countdown to={nextRound.date} />
               <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-white/60">
                 <span className="flex items-center gap-1"><CalendarDays className="h-4 w-4" /> {formatDate(nextRound.date, { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</span>
@@ -104,7 +106,7 @@ function Inner() {
 
       {/* TUR ZAMAN ÇİZELGESİ */}
       <section className="container-x py-12">
-        <h2 className="mb-6 font-music text-2xl font-bold uppercase">Yarışma Yolu</h2>
+        <h2 className="mb-6 font-music text-2xl font-bold uppercase">{t("Yarışma Yolu")}</h2>
         <div className="relative grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="absolute left-0 right-0 top-6 hidden h-0.5 bg-gradient-to-r from-fuchsia-500 via-pink-400 to-cyan-400 opacity-40 lg:block" />
           {comp.rounds.map((r) => {
@@ -116,7 +118,7 @@ function Inner() {
                 <p className="text-sm text-white/60">{formatDate(r.date, { day: "numeric", month: "long" })}</p>
                 <div className="mt-3 flex items-center gap-2">
                   <StatusBadge map={ROUND_STATUS} value={r.status} dot={r.status === "LIVE"} />
-                  <span className="text-xs text-white/50">{r.performances.length} performans</span>
+                  <span className="text-xs text-white/50">{r.performances.length} {t("performans")}</span>
                 </div>
               </Link>
             );
@@ -131,9 +133,9 @@ function Inner() {
             <div className="overflow-hidden rounded-3xl bg-white/[0.03] ring-1 ring-white/10">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-6 py-4">
                 <h2 className="font-music text-xl font-bold uppercase">{selected.name} {selected.status === "COMPLETED" ? "Sonuçları" : "Sahne Sırası"}</h2>
-                {selected.status === "COMPLETED" && <span className="text-xs text-white/50">Jüri %70 · Halk %30</span>}
+                {selected.status === "COMPLETED" && <span className="text-xs text-white/50">{t("Jüri %70 · Halk %30")}</span>}
               </div>
-              {selected.performances.length === 0 ? <p className="p-8 text-center text-white/50">Bu turun yarışmacıları henüz belirlenmedi.</p> : (
+              {selected.performances.length === 0 ? <p className="p-8 text-center text-white/50">{t("Bu turun yarışmacıları henüz belirlenmedi.")}</p> : (
                 <ol className="divide-y divide-white/5">
                   {[...selected.performances].sort((x, y) => (x.rank ?? 99) - (y.rank ?? 99) || x.order - y.order).map((p, i) => (
                     <li key={p.contestantId}>
@@ -155,7 +157,7 @@ function Inner() {
                             <p className="text-[10px] text-white/40">J {p.juryScore} · H {p.publicScore}</p>
                           </div>
                         ) : <Badge tone="dark">{comp.contestants.find((c) => c.id === p.contestantId)?.genre}</Badge>}
-                        {selected.status === "COMPLETED" && (p.advanced ? <Badge tone="green">Tur atladı</Badge> : <Badge tone="dark">Elendi</Badge>)}
+                        {selected.status === "COMPLETED" && (p.advanced ? <Badge tone="green">{t("Tur atladı")}</Badge> : <Badge tone="dark">{t("Elendi")}</Badge>)}
                       </Link>
                     </li>
                   ))}
@@ -163,7 +165,7 @@ function Inner() {
               )}
             </div>
             <div className="space-y-4">
-              <h3 className="font-music text-lg font-bold uppercase">Tur Kaydı</h3>
+              <h3 className="font-music text-lg font-bold uppercase">{t("Tur Kaydı")}</h3>
               <YouTubeEmbed url={selected.youtubeUrl} title={`${comp.name} ${comp.edition} — ${selected.name}`} />
               {selected.description && <p className="text-sm text-white/60">{selected.description}</p>}
               {selected.venueName && <p className="flex items-center gap-2 text-sm text-white/60"><MapPin className="h-4 w-4 text-fuchsia-300" /> {selected.venueName}</p>}
@@ -177,14 +179,14 @@ function Inner() {
         <section id="oylama" className="scroll-mt-24 border-y border-white/10 bg-gradient-to-b from-fuchsia-950/40 to-transparent py-14">
           <div className="container-x">
             <div className="mb-8 text-center">
-              <p className="eyebrow text-pink-300">Halk Oylaması Açık</p>
-              <h2 className="mt-2 font-music text-3xl font-black uppercase sm:text-4xl">Favorini Seç</h2>
-              <p className="mx-auto mt-2 max-w-lg text-sm text-white/60">Her gün bir oy kullanabilirsin. Halk oyları sonuçların %30&apos;unu belirler. Toplam {totalVotes.toLocaleString("tr-TR")} oy kullanıldı.</p>
+              <p className="eyebrow text-pink-300">{t("Halk Oylaması Açık")}</p>
+              <h2 className="mt-2 font-music text-3xl font-black uppercase sm:text-4xl">{t("Favorini Seç")}</h2>
+              <p className="mx-auto mt-2 max-w-lg text-sm text-white/60">Her gün bir oy kullanabilirsin. Halk oyları sonuçların %30&apos;unu belirler. Toplam {totalVotes.toLocaleString("tr-TR")} {t("oy kullanıldı.")}</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {voteBoard.map((c, i) => (
                 <div key={c.id} className="group relative overflow-hidden rounded-3xl bg-white/5 p-5 ring-1 ring-white/10 transition hover:ring-fuchsia-400/50">
-                  {i === 0 && (c.votes ?? 0) > 0 && <Badge tone="yellow" className="absolute right-4 top-4">Lider</Badge>}
+                  {i === 0 && (c.votes ?? 0) > 0 && <Badge tone="yellow" className="absolute right-4 top-4">{t("Lider")}</Badge>}
                   <Link href={`/muzik/yarismaci?s=${c.slug}`}>
                     <div className={cn("flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br font-music text-5xl font-black transition group-hover:scale-[1.02]", colorOf(c.id))}>
                       {c.photoUrl ? (
@@ -196,7 +198,7 @@ function Inner() {
                     <p className="text-sm text-white/50">{c.genre} · {c.type === "GRUP" ? "Grup" : "Solo"} · {c.district}</p>
                   </Link>
                   <div className="mt-4">
-                    <div className="mb-1 flex justify-between text-xs text-white/60"><span>{(c.votes ?? 0)} oy</span><span>%{pct((c.votes ?? 0), totalVotes)}</span></div>
+                    <div className="mb-1 flex justify-between text-xs text-white/60"><span>{(c.votes ?? 0)} {t("oy")}</span><span>%{pct((c.votes ?? 0), totalVotes)}</span></div>
                     <div className="h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-400" style={{ width: `${pct((c.votes ?? 0), totalVotes)}%` }} /></div>
                   </div>
                   <VoteButton contestantId={c.id} name={c.name} className="mt-4" />
@@ -209,7 +211,7 @@ function Inner() {
 
       {/* TÜM YARIŞMACILAR */}
       <section className="container-x py-14">
-        <h2 className="mb-6 font-music text-2xl font-bold uppercase">Yarışmacılar</h2>
+        <h2 className="mb-6 font-music text-2xl font-bold uppercase">{t("Yarışmacılar")}</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {comp.contestants.map((c) => (
             <Link key={c.id} href={`/muzik/yarismaci?s=${c.slug}`} className={cn("group rounded-2xl bg-white/[0.03] p-3 ring-1 ring-white/10 transition hover:bg-white/[0.08]", c.status === "ELIMINATED" && "opacity-50 hover:opacity-100")}>
@@ -225,7 +227,7 @@ function Inner() {
       {/* JÜRİ & ÖDÜLLER */}
       <section className="container-x grid gap-8 pb-16 lg:grid-cols-2">
         <div className="rounded-3xl bg-white/[0.03] p-6 ring-1 ring-white/10">
-          <h2 className="mb-5 flex items-center gap-2 font-music text-xl font-bold uppercase"><Gavel className="h-5 w-5 text-fuchsia-300" /> Jüri</h2>
+          <h2 className="mb-5 flex items-center gap-2 font-music text-xl font-bold uppercase"><Gavel className="h-5 w-5 text-fuchsia-300" /> {t("Jüri")}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             {comp.jury.map((j, ji) => (
               <div key={ji} className="flex items-center gap-3">
@@ -236,7 +238,7 @@ function Inner() {
           </div>
         </div>
         <div className="rounded-3xl bg-gradient-to-br from-amber-500/15 to-fuchsia-600/10 p-6 ring-1 ring-amber-300/20">
-          <h2 className="mb-5 flex items-center gap-2 font-music text-xl font-bold uppercase"><Trophy className="h-5 w-5 text-amber-300" /> Ödüller</h2>
+          <h2 className="mb-5 flex items-center gap-2 font-music text-xl font-bold uppercase"><Trophy className="h-5 w-5 text-amber-300" /> {t("Ödüller")}</h2>
           <ul className="space-y-3">
             {lines(comp.prizes).map((p, i) => (
               <li key={i} className="flex gap-3 text-sm"><Award className={cn("h-5 w-5 shrink-0", i === 0 ? "text-amber-300" : i === 1 ? "text-slate-300" : i === 2 ? "text-orange-400" : "text-fuchsia-300")} /> {p}</li>
@@ -246,11 +248,11 @@ function Inner() {
         <div className="rounded-3xl bg-white/[0.03] p-6 ring-1 ring-white/10 lg:col-span-2">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="flex items-center gap-2 font-music text-xl font-bold uppercase"><Music2 className="h-5 w-5 text-cyan-300" /> Sahne Senin Olsun</h2>
+              <h2 className="flex items-center gap-2 font-music text-xl font-bold uppercase"><Music2 className="h-5 w-5 text-cyan-300" /> {t("Sahne Senin Olsun")}</h2>
               <p className="mt-1 text-sm text-white/60">{comp.description}</p>
               {period && <p className="mt-2 text-sm text-pink-200">{period.title} — {periodState(period) === "OPEN" ? "başvurular açık!" : `${formatDate(period.startDate)} tarihinde açılıyor.`}</p>}
             </div>
-            <Link href={period ? `/basvuru/detay?s=${period.slug}` : "/basvuru"} className="btn shrink-0 bg-white px-6 py-3 text-[#0b0614] hover:bg-fuchsia-100">Başvuru Bilgileri</Link>
+            <Link href={period ? `/basvuru/detay?s=${period.slug}` : "/basvuru"} className="btn shrink-0 bg-white px-6 py-3 text-[#0b0614] hover:bg-fuchsia-100">{t("Başvuru Bilgileri")}</Link>
           </div>
         </div>
       </section>

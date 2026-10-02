@@ -10,6 +10,7 @@ import { Badge, EmptyState, PageHero } from "@/components/ui";
 import { FilterChips } from "@/components/FilterBar";
 
 
+import { useT } from "@/lib/i18n";
 const GRAD: Record<string, string> = { GENEL: "from-basalt-700 to-basalt-950", SPOR: "from-emerald-600 to-teal-900", MUZIK: "from-fuchsia-600 to-purple-950", TIYATRO: "from-amber-600 to-curtain-900", BASVURU: "from-sky-500 to-indigo-900" };
 
 export default function AnnouncementsPage() {
@@ -17,7 +18,8 @@ export default function AnnouncementsPage() {
 }
 
 function Inner() {
-  useTitle("Duyurular");
+  const t = useT();
+  useTitle(t("Duyurular"));
   const sp = { kategori: useParam("kategori") };
   const cat = sp.kategori?.toUpperCase();
   const { data, error } = useData(getAnnouncements, []);
@@ -26,10 +28,10 @@ function Inner() {
   const list = data.filter((a) => !cat || a.category === cat);
   return (
     <>
-      <PageHero eyebrow="Haberler" title="Duyurular" description="Organizasyondan son haberler, başvuru duyuruları ve etkinlik bilgileri." />
+      <PageHero eyebrow={t("Haberler")} title={t("Duyurular")} description={t("Organizasyondan son haberler, başvuru duyuruları ve etkinlik bilgileri.")} />
       <div className="container-x py-10">
         <div className="mb-8"><FilterChips name="kategori" basePath="/duyurular" params={{ kategori: sp.kategori }} value={sp.kategori} options={Object.entries(ANNOUNCEMENT_CATEGORIES).map(([k, v]) => ({ value: k.toLowerCase(), label: v }))} /></div>
-        {list.length === 0 && <EmptyState title="Duyuru bulunmuyor" />}
+        {list.length === 0 && <EmptyState title={t("Duyuru bulunmuyor")} />}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {list.map((a) => (
             <Link key={a.id} href={`/duyurular/oku?s=${a.slug}`} className="card group overflow-hidden transition hover:-translate-y-0.5 hover:shadow-xl">
@@ -39,7 +41,7 @@ function Inner() {
                   <img src={a.coverUrl} alt="" className="h-full w-full object-cover" />
                 )}
                 <div className="absolute left-4 top-4 flex gap-2">
-                  {a.isPinned && <Badge tone="red">Önemli</Badge>}
+                  {a.isPinned && <Badge tone="red">{t("Önemli")}</Badge>}
                   <Badge tone="dark">{ANNOUNCEMENT_CATEGORIES[a.category]}</Badge>
                 </div>
               </div>

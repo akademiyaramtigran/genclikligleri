@@ -10,12 +10,14 @@ import { FilterChips } from "@/components/FilterBar";
 import { MatchRow } from "@/components/sport";
 import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 
+import { useT } from "@/lib/i18n";
 export default function FixturePage() {
   return <Suspended><Inner /></Suspended>;
 }
 
 function Inner() {
-  useTitle("Fikstür & Sonuçlar");
+  const t = useT();
+  useTitle(t("Fikstür & Sonuçlar"));
   const sp = { brans: useParam("brans"), cinsiyet: useParam("cinsiyet"), durum: useParam("durum") };
   const { data, error } = useData(getSeasonMatches, []);
   const sport = SPORT_LIST.find((s) => s.slug === sp.brans)?.key;
@@ -32,14 +34,14 @@ function Inner() {
 
   return (
     <>
-      <PageHero eyebrow="Maç Merkezi" title="Fikstür & Sonuçlar" description="Şehrin dört bir yanındaki sahalarda ve salonlarda oynanan tüm gençlik ligi maçları." />
+      <PageHero eyebrow={t("Maç Merkezi")} title={t("Fikstür & Sonuçlar")} description={t("Şehrin dört bir yanındaki sahalarda ve salonlarda oynanan tüm gençlik ligi maçları.")} />
       <div className="container-x py-10">
         <div className="mb-8 space-y-3">
-          <FilterChips name="durum" basePath="/spor/fikstur" params={sp} value={sp.durum} allLabel="Gelecek Maçlar" options={[{ value: "sonuclar", label: "Sonuçlar" }]} />
-          <FilterChips name="brans" basePath="/spor/fikstur" params={sp} value={sp.brans} allLabel="Tüm Branşlar" options={SPORT_LIST.map((s) => ({ value: s.slug, label: `${s.emoji} ${s.label}` }))} />
-          <FilterChips name="cinsiyet" basePath="/spor/fikstur" params={sp} value={sp.cinsiyet} allLabel="Erkek & Kadın" options={[{ value: "erkek", label: "Erkekler" }, { value: "kadin", label: "Kadınlar" }]} />
+          <FilterChips name="durum" basePath="/spor/fikstur" params={sp} value={sp.durum} allLabel={t("Gelecek Maçlar")} options={[{ value: "sonuclar", label: "Sonuçlar" }]} />
+          <FilterChips name="brans" basePath="/spor/fikstur" params={sp} value={sp.brans} allLabel={t("Tüm Branşlar")} options={SPORT_LIST.map((s) => ({ value: s.slug, label: `${s.emoji} ${t(s.label)}` }))} />
+          <FilterChips name="cinsiyet" basePath="/spor/fikstur" params={sp} value={sp.cinsiyet} allLabel={t("Erkek & Kadın")} options={[{ value: "erkek", label: "Erkekler" }, { value: "kadin", label: "Kadınlar" }]} />
         </div>
-        {error ? <ErrorBox message={error} /> : !data ? <PageLoader className="min-h-[30vh]" /> : days.size === 0 ? <EmptyState title="Bu filtrelere uygun maç bulunamadı" icon="📅" /> : (
+        {error ? <ErrorBox message={error} /> : !data ? <PageLoader className="min-h-[30vh]" /> : days.size === 0 ? <EmptyState title={t("Bu filtrelere uygun maç bulunamadı")} icon="📅" /> : (
           <div className="space-y-6">
             {[...days.entries()].map(([k, list]) => (
               <div key={k} className="card overflow-hidden">
