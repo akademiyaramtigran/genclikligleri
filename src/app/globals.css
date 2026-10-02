@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+@layer base {
+  html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
+  body { @apply bg-basalt-50 text-basalt-900 antialiased; }
+  ::selection { @apply bg-dicle-400/40; }
+}
+
+@layer components {
+  .container-x { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8; }
+  .card { @apply rounded-2xl border border-basalt-200/70 bg-white shadow-card; }
+  .card-dark { @apply rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply btn bg-basalt-900 text-white hover:bg-basalt-800 focus-visible:ring-basalt-900; }
+  .btn-accent { @apply btn bg-dicle-500 text-white hover:bg-dicle-600 focus-visible:ring-dicle-500; }
+  .btn-outline { @apply btn border border-basalt-200 bg-white text-basalt-800 hover:bg-basalt-50; }
+  .btn-ghost { @apply btn text-basalt-700 hover:bg-basalt-100; }
+  .btn-danger { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  .btn-sm { @apply px-3 py-1.5 text-xs rounded-lg; }
+  .input { @apply block w-full rounded-xl border border-basalt-200 bg-white px-3.5 py-2.5 text-sm text-basalt-900 placeholder:text-basalt-400 shadow-sm transition focus:border-dicle-500 focus:outline-none focus:ring-4 focus:ring-dicle-500/15 disabled:bg-basalt-50; }
+  .label { @apply mb-1.5 block text-sm font-medium text-basalt-700; }
+  .hint { @apply mt-1 text-xs text-basalt-500; }
+  .eyebrow { @apply text-xs font-bold uppercase tracking-[0.2em]; }
+  .link { @apply font-medium text-dicle-700 underline-offset-4 hover:underline; }
+  .table-base { @apply w-full text-sm; }
+  .table-base th { @apply whitespace-nowrap px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-basalt-500; }
+  .table-base td { @apply whitespace-nowrap px-3 py-2.5; }
+  .table-base tbody tr { @apply border-t border-basalt-100; }
+  .prose-lite p { @apply mb-3 leading-relaxed; }
+  .prose-lite ul { @apply mb-3 list-disc pl-5 space-y-1; }
+}
+
+@layer utilities {
+  /* Diyarbakır surlarının bazalt taşlarından esinlenen desen */
+  .bg-basalt-wall {
+    background-color: #0a0d15;
+    background-image:
+      linear-gradient(rgba(255,255,255,.035) 2px, transparent 2px),
+      linear-gradient(90deg, rgba(255,255,255,.035) 2px, transparent 2px),
+      linear-gradient(90deg, rgba(255,255,255,.02) 2px, transparent 2px);
+    background-size: 96px 48px, 96px 48px, 48px 96px;
+    background-position: 0 0, 0 0, 48px 24px;
+  }
+  .bg-noise { background-image: radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px); background-size: 3px 3px; }
+  .bg-curtain {
+    background-color: #3b0b0b;
+    background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.35) 0 6px, rgba(255,255,255,.04) 6px 22px, rgba(0,0,0,.25) 22px 34px);
+  }
+  .text-balance { text-wrap: balance; }
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .mask-fade-x { mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+}

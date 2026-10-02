@@ -1,0 +1,159 @@
+rules_version = '2';
+
+// Diyarbakır Gençlik Ligleri — Firestore güvenlik kuralları
+// Bu dosyanın içeriğini Firebase Console → Firestore Database → Kurallar sekmesine yapıştırıp "Yayınla" deyin.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ───────── Yardımcılar ─────────
+    function signedIn() { return request.auth != null; }
+    function adminDoc() { return get(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && adminDoc().data.active == true;
+    }
+    function isSuper() { return isAdmin() && adminDoc().data.role == 'SUPER_ADMIN'; }
+    // Birim yetkisi: SPOR / MUZIK / TIYATRO
+    function can(unit) {
+      return isAdmin() && (adminDoc().data.role == 'SUPER_ADMIN' || adminDoc().data.scope == 'ALL' || adminDoc().data.scope == unit);
+    }
+    function validCategory(c) { return c in ['SPOR', 'MUZIK', 'TIYATRO']; }
+    // Bugünün tarihi (İstanbul, UTC+3) — "YYYY-MM-DD" ile karşılaştırma
+    function isToday(day) {
+      let t = request.time + duration.value(3, 'h');
+      let p = day.split('-');
+      return p.size() == 3 && int(p[0]) == t.year() && int(p[1]) == t.month() && int(p[2]) == t.day();
+    }
+
+    // ───────── Spor (herkes okur, spor birimi yazar) ─────────
+    match /seasons/{id}  { allow read: if true; allow write: if can('SPOR'); }
+    match /leagues/{id}  { allow read: if true; allow write: if can('SPOR'); }
+    match /teams/{id}    { allow read: if true; allow write: if can('SPOR'); }
+    match /players/{id}  { allow read: if true; allow write: if can('SPOR'); }
+    match /matches/{id}  { allow read: if true; allow write: if can('SPOR'); }
+    // T.C. kimlik numaraları: yalnızca spor yöneticileri
+    match /playerPrivate/{id} { allow read, write: if can('SPOR'); }
+    match /venues/{id}   { allow read: if true; allow write: if isAdmin(); }
+
+    // ───────── Müzik ─────────
+    match /musicCompetitions/{id} { allow read: if true; allow write: if can('MUZIK'); }
+    match /musicContestants/{id}  { allow read: if true; allow write: if can('MUZIK'); }
+    match /musicRounds/{id}       { allow read: if true; allow write: if can('MUZIK'); }
+
+    // Halk oylaması: anonim oturumla, kişi başı günde bir oy (belge kimliği uid_gün)
+    match /votes/{vid} {
+      allow list: if true; // oy sayımı (count) için
+      allow get: if signedIn() && vid.matches(request.auth.uid + '_.*');
+      allow create: if can('MUZIK') || (
+        signedIn()
+        && vid == request.auth.uid + '_' + request.resource.data.day
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['contestantId', 'uid', 'day', 'createdAt'])
+        && isToday(request.resource.data.day)
+        && exists(/databases/$(database)/documents/musicContestants/$(request.resource.data.contestantId))
+      );
+      allow update: if false;
+      allow delete: if can('MUZIK');
+    }
+
+    // ───────── Tiyatro ─────────
+    match /theatreFestivals/{id} { allow read: if true; allow write: if can('TIYATRO'); }
+    match /theatreGroups/{id}    { allow read: if true; allow write: if can('TIYATRO'); }
+    match /theatrePlays/{id}     { allow read: if true; allow write: if can('TIYATRO'); }
+
+    // ───────── Başvurular ─────────
+    match /periods/{id} {
+      allow read: if resource.data.isPublished == true || isAdmin();
+      allow create, update: if can(request.resource.data.category);
+      allow delete: if can(resource.data.category);
+    }
+
+    match /applications/{code} {
+      // Ziyaretçi yalnızca yeni başvuru oluşturabilir; okuyamaz, değiştiremez
+      allow create: if signedIn()
+        && code.size() <= 12
+        && request.resource.data.trackingCode == code
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.resultEntityId == null
+        && request.resource.data.kvkkConsent == true
+        && request.resource.data.ownerUid == request.auth.uid
+        && validCategory(request.resource.data.category)
+        && request.resource.data.members.size() <= 60
+        && request.resource.data.documents.size() <= 10;
+      allow read, update, delete: if can(resource.data.category);
+    }
+
+    // Takip ekranı: kod bilinirse tek belge okunur (liste yok); e-posta özeti istemcide karşılaştırılır
+    match /applicationStatus/{code} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.status == 'PENDING'
+        && existsAfter(/databases/$(database)/documents/applications/$(code));
+      allow update, delete: if isAdmin();
+    }
+
+    // Başvuru belgeleri (Storage yerine Firestore'da parçalı)
+    match /files/{fid} {
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.size <= 5 * 1024 * 1024
+        && request.resource.data.chunks <= 10;
+      allow read, delete: if isAdmin();
+      match /chunks/{n} {
+        allow create: if signedIn()
+          && get(/databases/$(database)/documents/files/$(fid)).data.ownerUid == request.auth.uid
+          && request.resource.data.data.size() <= 750000;
+        allow read, delete: if isAdmin();
+      }
+    }
+
+    // ───────── İçerik ─────────
+    match /announcements/{id} {
+      allow read: if resource.data.isPublished == true || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /videos/{id} { allow read: if true; allow write: if isAdmin(); }
+
+    match /messages/{id} {
+      allow create: if signedIn()
+        && request.resource.data.isRead == false
+        && request.resource.data.message.size() <= 5000;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ───────── Yönetim ─────────
+    match /admins/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isSuper();
+      // İlk kurulum: sistemde hiç kurulum kaydı yoksa ilk kullanıcı kendini süper yönetici yapabilir
+      allow create: if isSuper() || (
+        signedIn() && request.auth.uid == uid
+        && request.resource.data.role == 'SUPER_ADMIN'
+        && !exists(/databases/$(database)/documents/config/bootstrap)
+        && existsAfter(/databases/$(database)/documents/config/bootstrap)
+      );
+      allow update: if isSuper()
+        || (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLoginAt']));
+      allow delete: if isSuper();
+    }
+
+    match /config/{id} {
+      allow get: if true;
+      allow create: if (id == 'bootstrap'
+          && signedIn()
+          && !exists(/databases/$(database)/documents/config/bootstrap)
+          && existsAfter(/databases/$(database)/documents/admins/$(request.auth.uid)))
+        || (id != 'bootstrap' && isAdmin());
+      allow update: if id != 'bootstrap' && isAdmin();
+      allow delete: if false;
+    }
+
+    match /logs/{id} {
+      allow create: if isAdmin();
+      allow read: if isAdmin();
+    }
+  }
+}
