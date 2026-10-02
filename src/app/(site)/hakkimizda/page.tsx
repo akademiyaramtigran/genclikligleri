@@ -7,8 +7,10 @@ import { useData, useTitle } from "@/lib/hooks";
 import { PageHero, StatTile } from "@/components/ui";
 
 
+import { useT } from "@/lib/i18n";
 export default function AboutPage() {
-  useTitle("Hakkımızda");
+  const t = useT();
+  useTitle(t("Hakkımızda"));
   const { data } = useData(() => Promise.all([countOf("teams"), countOf("players"), countOf("musicContestants"), countOf("theatreGroups")]).catch(() => [0, 0, 0, 0]), []);
   const [teams, players, contestants, groups] = data ?? ["…", "…", "…", "…"];
   const values = [
@@ -18,10 +20,10 @@ export default function AboutPage() {
   ] as const;
   return (
     <>
-      <PageHero eyebrow="Organizasyon" title="Hakkımızda" description="Diyarbakır Gençlik Organizasyonu; şehrin gençlerini spor, müzik ve tiyatro etrafında bir araya getiren, tek merkezden yönetilen şehir çapında bir gençlik platformudur." />
+      <PageHero eyebrow={t("Organizasyon")} title={t("Hakkımızda")} description="Diyarbakır Gençlik Organizasyonu; şehrin gençlerini spor, müzik ve tiyatro etrafında bir araya getiren, tek merkezden yönetilen şehir çapında bir gençlik platformudur." />
       <div className="container-x space-y-12 py-12">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatTile label="Takım" value={teams} /><StatTile label="Sporcu" value={players} /><StatTile label="Müzisyen / Grup" value={contestants} /><StatTile label="Tiyatro Topluluğu" value={groups} />
+          <StatTile label={t("Takım")} value={teams} /><StatTile label={t("Sporcu")} value={players} /><StatTile label={t("Müzisyen / Grup")} value={contestants} /><StatTile label={t("Tiyatro Topluluğu")} value={groups} />
         </div>
         <div className="grid gap-6 md:grid-cols-3">
           {[[Trophy, "Spor Ligleri", "Futbol, basketbol, voleybol ve hentbolda erkek ve kadın gençlik ligleri.", "/spor", "from-emerald-500 to-teal-800"], [Music2, "Genç Sesler", "Tüm türlere açık, jüri ve halk oylamalı müzik yarışması.", "/muzik", "from-fuchsia-600 to-purple-900"], [Drama, "Tiyatro Festivali", "Gençlik topluluklarının sahne aldığı bir haftalık festival.", "/tiyatro", "from-amber-600 to-curtain-900"]].map(([I, t, d, h, g]) => {

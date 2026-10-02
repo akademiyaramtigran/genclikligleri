@@ -11,11 +11,13 @@ import { Badge, EmptyState, StatusBadge } from "@/components/ui";
 import { GenderSwitch, LeaderTable, MatchRow, StandingsTable } from "@/components/sport";
 import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 
+import { useT } from "@/lib/i18n";
 export default function SporPage() {
   return <Suspended><Inner /></Suspended>;
 }
 
 function Inner() {
+  const t = useT();
   const gender = genderBySlug(useParam("cinsiyet"));
   const g = GENDERS[gender];
   useTitle(`Lig Merkezi — ${g.plural}`);
@@ -43,7 +45,7 @@ function Inner() {
       <section className="bg-basalt-wall relative overflow-hidden text-white">
         <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent", accent)} />
         <div className="container-x relative py-12 sm:py-16">
-          <p className="eyebrow text-dicle-300">Lig Merkezi · 2026-2027</p>
+          <p className="eyebrow text-dicle-300">{t("Lig Merkezi · 2026-2027")}</p>
           <div className="mt-3 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h1 className="font-display text-5xl font-semibold uppercase tracking-wide sm:text-6xl">{g.plural}</h1>
@@ -59,19 +61,19 @@ function Inner() {
               <a key={league.id} href={`#${sport.slug}`} className="flex shrink-0 items-center gap-2 rounded-2xl bg-white/5 px-4 py-3 ring-1 ring-white/10 transition hover:bg-white/10">
                 <span className="text-2xl">{sport.emoji}</span>
                 <span>
-                  <span className="block text-sm font-semibold">{sport.label}</span>
-                  <span className="block text-xs text-white/50">{league.entries.length} takım · {total} maç</span>
+                  <span className="block text-sm font-semibold">{t(sport.label)}</span>
+                  <span className="block text-xs text-white/50">{league.entries.length} takım · {total} {t("maç")}</span>
                 </span>
               </a>
             ))}
-            <Link href="/spor/fikstur" className="flex shrink-0 items-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm font-semibold ring-1 ring-white/10 hover:bg-white/10"><CalendarDays className="h-5 w-5 text-dicle-300" /> Fikstür</Link>
-            <Link href="/spor/krallik" className="flex shrink-0 items-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm font-semibold ring-1 ring-white/10 hover:bg-white/10"><Crown className="h-5 w-5 text-amber-300" /> Krallık</Link>
+            <Link href="/spor/fikstur" className="flex shrink-0 items-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm font-semibold ring-1 ring-white/10 hover:bg-white/10"><CalendarDays className="h-5 w-5 text-dicle-300" /> {t("Fikstür")}</Link>
+            <Link href="/spor/krallik" className="flex shrink-0 items-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm font-semibold ring-1 ring-white/10 hover:bg-white/10"><Crown className="h-5 w-5 text-amber-300" /> {t("Krallık")}</Link>
           </nav>
         </div>
       </section>
 
       <div className="container-x space-y-14 py-12">
-        {items.length === 0 && <EmptyState title="Bu kategoride aktif lig bulunmuyor" description="Yeni sezon ligleri oluşturulduğunda burada listelenecek." />}
+        {items.length === 0 && <EmptyState title={t("Bu kategoride aktif lig bulunmuyor")} description={t("Yeni sezon ligleri oluşturulduğunda burada listelenecek.")} />}
         {items.map(({ sport, league, rows, scorers, next, players, played, total }) => (
           <section key={league.id} id={sport.slug} className="scroll-mt-28">
             <div className={cn("relative overflow-hidden rounded-t-3xl bg-gradient-to-r px-6 py-6 text-white", sport.gradient)}>
@@ -84,12 +86,12 @@ function Inner() {
                   </div>
                   <h2 className="mt-2 font-display text-3xl font-semibold uppercase tracking-wide">{league.name}</h2>
                   <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/75">
-                    <span className="flex items-center gap-1"><Shield className="h-4 w-4" /> {league.entries.length} takım</span>
-                    <span className="flex items-center gap-1"><Users className="h-4 w-4" /> {players} sporcu</span>
-                    <span className="flex items-center gap-1"><ListOrdered className="h-4 w-4" /> {played}/{total} maç oynandı</span>
+                    <span className="flex items-center gap-1"><Shield className="h-4 w-4" /> {league.entries.length} {t("takım")}</span>
+                    <span className="flex items-center gap-1"><Users className="h-4 w-4" /> {players} {t("sporcu")}</span>
+                    <span className="flex items-center gap-1"><ListOrdered className="h-4 w-4" /> {played}/{total} {t("maç oynandı")}</span>
                   </p>
                 </div>
-                <Link href={`/spor/lig?s=${league.slug}`} className="btn shrink-0 bg-white text-basalt-900 hover:bg-white/90">Lig Sayfası <ArrowRight className="h-4 w-4" /></Link>
+                <Link href={`/spor/lig?s=${league.slug}`} className="btn shrink-0 bg-white text-basalt-900 hover:bg-white/90">{t("Lig Sayfası")} <ArrowRight className="h-4 w-4" /></Link>
               </div>
             </div>
             <div className="grid gap-px overflow-hidden rounded-b-3xl border border-t-0 border-basalt-200 bg-basalt-200 lg:grid-cols-[1.6fr_1fr]">
@@ -98,14 +100,14 @@ function Inner() {
               </div>
               <div className="flex flex-col bg-white">
                 <div className="flex items-center justify-between border-b border-basalt-100 px-4 py-3">
-                  <h3 className="flex items-center gap-2 font-semibold"><Crown className="h-4 w-4 text-amber-500" /> {sport.scorerTitle}</h3>
-                  <Link href={`/spor/lig?s=${league.slug}?sekme=istatistik`} className="text-xs font-medium text-dicle-700">Tümü →</Link>
+                  <h3 className="flex items-center gap-2 font-semibold"><Crown className="h-4 w-4 text-amber-500" /> {t(sport.scorerTitle)}</h3>
+                  <Link href={`/spor/lig?s=${league.slug}?sekme=istatistik`} className="text-xs font-medium text-dicle-700">{t("Tümü →")}</Link>
                 </div>
-                <LeaderTable rows={scorers} unit={sport.scorerUnit} compact />
+                <LeaderTable rows={scorers} unit={t(sport.scorerUnit)} compact />
                 <div className="mt-auto border-t border-basalt-100">
-                  <h3 className="px-4 pt-3 text-xs font-bold uppercase tracking-wider text-basalt-500">Sıradaki Maçlar</h3>
+                  <h3 className="px-4 pt-3 text-xs font-bold uppercase tracking-wider text-basalt-500">{t("Sıradaki Maçlar")}</h3>
                   <div className="divide-y divide-basalt-100">
-                    {next.length === 0 ? <p className="px-4 py-4 text-sm text-basalt-400">Planlanmış maç yok</p> : next.map((m) => <MatchRow key={m.id} m={m} />)}
+                    {next.length === 0 ? <p className="px-4 py-4 text-sm text-basalt-400">{t("Planlanmış maç yok")}</p> : next.map((m) => <MatchRow key={m.id} m={m} />)}
                   </div>
                 </div>
               </div>

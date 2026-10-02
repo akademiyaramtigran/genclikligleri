@@ -9,7 +9,7 @@ import type { Application, Period } from "@/lib/types";
 import { useAdmin } from "../../../AdminContext";
 import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { DocLink } from "./DocLink";
-import { APPLICATION_STATUS, CATEGORIES, SPORTS, type SportKey } from "@/lib/constants";
+import { APPLICATION_STATUS, CATEGORIES, SPORTS, WRITING_CATEGORIES, WRITING_LANGUAGES, type SportKey } from "@/lib/constants";
 import { age, formatDateTime } from "@/lib/utils";
 import { Badge, EmptyState, KeyValue } from "@/components/ui";
 import { AdminHeader, Panel, SelectField, TextArea } from "@/components/admin/fields";
@@ -21,6 +21,7 @@ const LABELS: Record<string, string> = {
   shortName: "Kısa Ad", sport: "Branş", gender: "Kategori", coachName: "Antrenör", coachPhone: "Antrenör Tel.", primaryColor: "Ana Renk", secondaryColor: "İkinci Renk",
   homeVenue: "İç Saha Tercihi", foundedYear: "Kuruluş", note: "Tanıtım", type: "Katılım", genre: "Tür", demoUrl: "Demo", instagram: "Instagram", bio: "Biyografi", songs: "Eserler",
   playTitle: "Oyun", playwright: "Yazar", director: "Yönetmen", durationMin: "Süre (dk)", language: "Dil", synopsis: "Özet", techNeeds: "Teknik İhtiyaçlar", videoUrl: "Video",
+  penName: "Rumuz", workCategory: "Kategori", pageCount: "Sayfa", school: "Okul / Meslek",
 };
 
 export default function ApplicationDetail() {
@@ -49,7 +50,7 @@ function Inner() {
   const gender = appData.gender || period.gender;
   const leagues = isSport ? data.leagues.filter((l) => (!sport || l.sport === sport) && (!gender || l.gender === gender)) : [];
   const resultLink = app.resultEntityId
-    ? isSport ? `/yonetim/takimlar/duzenle?id=${app.resultEntityId}` : app.category === "MUZIK" ? `/yonetim/muzik/yarismacilar/duzenle?id=${app.resultEntityId}` : `/yonetim/tiyatro/oyunlar`
+    ? isSport ? `/yonetim/takimlar/duzenle?id=${app.resultEntityId}` : app.category === "MUZIK" ? `/yonetim/muzik/yarismacilar/duzenle?id=${app.resultEntityId}` : app.category === "YAZARLIK" ? `/yonetim/tiyatro/yazarlik?c=${app.resultEntityId}` : `/yonetim/tiyatro/oyunlar`
     : null;
   const outOfAge = (m: Record<string, string>) => {
     const a = age(m.birthDate);
@@ -74,7 +75,7 @@ function Inner() {
             <Panel title={CATEGORIES[app.category as keyof typeof CATEGORIES]?.label + " Bilgileri"}>
               <KeyValue items={Object.entries(appData).filter(([k]) => !["bio", "note", "synopsis", "techNeeds", "logoUrl"].includes(k)).map(([k, v]) => [
                 LABELS[k] ?? k,
-                k === "sport" ? SPORTS[v as SportKey]?.label ?? v : k === "gender" ? (v === "KADIN" ? "Kadınlar" : "Erkekler") : k.endsWith("Color") ? <span key={k} className="inline-flex items-center gap-2"><span className="h-4 w-4 rounded-full ring-1 ring-basalt-200" style={{ background: v }} />{v}</span> : /^https?:/.test(v) ? <a key={k} href={v} target="_blank" rel="noreferrer" className="link inline-flex items-center gap-1">Aç <ExternalLink className="h-3 w-3" /></a> : v,
+                k === "sport" ? SPORTS[v as SportKey]?.label ?? v : k === "gender" ? (v === "KADIN" ? "Kadınlar" : "Erkekler") : app.category === "YAZARLIK" && k === "language" ? WRITING_LANGUAGES[v] ?? v : k === "workCategory" ? WRITING_CATEGORIES[v] ?? v : k.endsWith("Color") ? <span key={k} className="inline-flex items-center gap-2"><span className="h-4 w-4 rounded-full ring-1 ring-basalt-200" style={{ background: v }} />{v}</span> : /^https?:/.test(v) ? <a key={k} href={v} target="_blank" rel="noreferrer" className="link inline-flex items-center gap-1">Aç <ExternalLink className="h-3 w-3" /></a> : v,
               ] as [string, React.ReactNode])} />
               {["bio", "note", "synopsis", "techNeeds"].filter((k) => appData[k]).map((k) => (
                 <div key={k} className="mt-3 rounded-lg bg-basalt-50 p-3 text-sm"><p className="text-xs font-semibold text-basalt-500">{LABELS[k]}</p><p className="whitespace-pre-line">{appData[k]}</p></div>
@@ -82,7 +83,7 @@ function Inner() {
             </Panel>
           </div>
 
-          <Panel title={`${isSport ? "Oyuncu Listesi" : "Üyeler"} (${members.length})`} description={period.minAge || period.maxAge ? `Yaş aralığı: ${period.minAge ?? "—"}-${period.maxAge ?? "—"}. Kırmızı satırlar aralık dışındadır.` : undefined}>
+          <Panel title={`${isSport ? "Oyuncu Listesi" : app.category === "YAZARLIK" ? "Yazarlar" : "Üyeler"} (${members.length})`} description={period.minAge || period.maxAge ? `Yaş aralığı: ${period.minAge ?? "—"}-${period.maxAge ?? "—"}. Kırmızı satırlar aralık dışındadır.` : undefined}>
             <div className="overflow-x-auto">
               <table className="table-base">
                 <thead><tr><th>#</th><th>Ad Soyad</th><th>Doğum / Yaş</th>{isSport ? <><th>Mevki</th><th>Forma</th><th>T.C. Kimlik</th></> : <th>Rol</th>}</tr></thead>
@@ -121,13 +122,13 @@ function Inner() {
               {resultLink && <Link href={resultLink} className="btn-outline btn-sm mt-3">Oluşturulan kaydı aç →</Link>}
             </div>
           ) : (
-            <Panel title="Onayla ve Kayıt Oluştur" description={isSport ? "Takım ve tüm oyuncular otomatik oluşturulur." : app.category === "MUZIK" ? "Güncel yarışmaya yarışmacı olarak eklenir." : "Topluluk ve oyun güncel festivale eklenir."}>
+            <Panel title="Onayla ve Kayıt Oluştur" description={isSport ? "Takım ve tüm oyuncular otomatik oluşturulur." : app.category === "MUZIK" ? "Güncel yarışmaya yarışmacı olarak eklenir." : app.category === "YAZARLIK" ? "Eser güncel Genç Kalemler yarışmasına eklenir." : "Topluluk ve oyun güncel festivale eklenir."}>
               <AdminForm action={approveApplication} submitLabel="Onayla ve Oluştur" confirm="Başvuru onaylanacak ve kayıtlar oluşturulacak. Devam edilsin mi?">
                 <input type="hidden" name="id" value={app.id} />
                 {isSport && (
                   <SelectField label="Eklenecek Lig" name="leagueId" defaultValue={period.leagueId} empty="— Şimdilik lige ekleme —" options={leagues.map((l) => ({ value: l.id, label: l.name }))} />
                 )}
-                <TextArea className="mt-3" label="Başvuru sahibine not" name="publicNote" rows={2} defaultValue={app.publicNote ?? "Tebrikler! Başvurunuz onaylandı. Kura ve fikstür bilgileri ayrıca paylaşılacaktır."} />
+                <TextArea className="mt-3" label="Başvuru sahibine not" name="publicNote" rows={2} defaultValue={app.publicNote ?? (isSport ? "Tebrikler! Başvurunuz onaylandı. Kura ve fikstür bilgileri ayrıca paylaşılacaktır." : app.category === "YAZARLIK" ? "Tebrikler! Metniniz yarışmaya kabul edildi. Kısa liste ve finalistler yarışma sayfasında açıklanacaktır." : "Tebrikler! Başvurunuz onaylandı. Program bilgileri ayrıca paylaşılacaktır.")} />
               </AdminForm>
             </Panel>
           )}

@@ -12,12 +12,14 @@ import { GenderSwitch, LeaderTable } from "@/components/sport";
 import Link from "next/link";
 
 
+import { useT } from "@/lib/i18n";
 export default function KrallikPage() {
   return <Suspended><Inner /></Suspended>;
 }
 
 function Inner() {
-  useTitle("Krallık Yarışı");
+  const t = useT();
+  useTitle(t("Krallık Yarışı"));
   const sp = { brans: useParam("brans"), cinsiyet: useParam("cinsiyet") };
   const sport = sportBySlug(sp.brans ?? "futbol") ?? SPORT_LIST[0]!;
   const gender = genderBySlug(sp.cinsiyet);
@@ -32,19 +34,19 @@ function Inner() {
 
   return (
     <>
-      <PageHero eyebrow="Bireysel İstatistikler" title="Krallık Yarışı" description="Ligin en golcü, en skorer ve en üretken oyuncuları.">
+      <PageHero eyebrow={t("Bireysel İstatistikler")} title={t("Krallık Yarışı")} description={t("Ligin en golcü, en skorer ve en üretken oyuncuları.")}>
         <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <GenderSwitch active={gender} hrefFor={(g) => `/spor/krallik?brans=${sport.slug}&cinsiyet=${g}`} />
         </div>
       </PageHero>
       <div className="container-x py-10">
         <div className="mb-8">
-          <FilterChips name="brans" basePath="/spor/krallik" params={sp} value={sport.slug} allLabel={null} options={SPORT_LIST.map((s) => ({ value: s.slug, label: `${s.emoji} ${s.label}` }))} />
+          <FilterChips name="brans" basePath="/spor/krallik" params={sp} value={sport.slug} allLabel={null} options={SPORT_LIST.map((s) => ({ value: s.slug, label: `${s.emoji} ${t(s.label ?? "")}` }))} />
         </div>
 
         {podium.length > 0 && (
           <div className="mb-10">
-            <h2 className="mb-6 flex items-center gap-2 font-display text-2xl font-semibold uppercase tracking-wide"><Crown className="h-6 w-6 text-amber-500" /> {sport.scorerTitle} Kürsüsü</h2>
+            <h2 className="mb-6 flex items-center gap-2 font-display text-2xl font-semibold uppercase tracking-wide"><Crown className="h-6 w-6 text-amber-500" /> {t(sport.scorerTitle)} {t("Kürsüsü")}</h2>
             <div className="grid items-end gap-4 sm:grid-cols-3">
               {[podium[1], podium[0], podium[2]].map((p, i) => {
                 if (!p) return <div key={i} />;
@@ -56,7 +58,7 @@ function Inner() {
                     <p className="mt-4 font-display text-xl font-semibold uppercase">{p.name}</p>
                     <p className="text-sm opacity-80">{p.teamName}</p>
                     <p className="mt-3 font-display text-5xl font-bold">{p.total}</p>
-                    <p className="text-xs uppercase tracking-widest opacity-75">{sport.scorerUnit} · {p.perMatch}/maç</p>
+                    <p className="text-xs uppercase tracking-widest opacity-75">{t(sport.scorerUnit)} · {p.perMatch}{t("/maç")}</p>
                   </Link>
                 );
               })}
@@ -68,13 +70,13 @@ function Inner() {
           {main && (
             <div className="card overflow-hidden lg:row-span-2">
               <h3 className="flex items-center gap-2 border-b border-basalt-100 px-4 py-3 font-semibold"><Crown className="h-4 w-4 text-amber-500" /> {main.b.leaderboard}</h3>
-              <LeaderTable rows={main.rows} unit={sport.scorerUnit} />
+              <LeaderTable rows={main.rows} unit={t(sport.scorerUnit)} />
             </div>
           )}
           {rest.map(({ b, rows }) => (
             <div key={b.key} className="card overflow-hidden">
               <h3 className="border-b border-basalt-100 px-4 py-3 font-semibold">{b.leaderboard}</h3>
-              <LeaderTable rows={rows.slice(0, 8)} unit={b.label} />
+              <LeaderTable rows={rows.slice(0, 8)} unit={t(b.label ?? "")} />
             </div>
           ))}
         </div>

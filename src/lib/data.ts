@@ -7,7 +7,7 @@ import {
 import { fdb } from "./firebase";
 import type {
   Announcement, AppStatus, League, Match, MusicCompetition, MusicContestant, MusicRound, Period, Player, Season,
-  TheatreFestival, TheatreGroup, TheatrePlay, Team, Venue, Video,
+  TheatreFestival, TheatreGroup, TheatrePlay, Team, Venue, Video, WritingContest,
 } from "./types";
 
 /** Firestore Timestamp → Date (iç içe nesnelerde de) */
@@ -133,6 +133,14 @@ export async function getFestivalPlays(festivalId: string) {
 export const getPlay = (slug: string) => getOne<TheatrePlay>("theatrePlays", slug);
 export const getGroup = (slug: string) => getOne<TheatreGroup>("theatreGroups", slug);
 export const getGroupPlays = (groupId: string) => getAll<TheatrePlay>("theatrePlays", where("groupId", "==", groupId));
+
+// ───────────── Genç Kalemler ─────────────
+
+export const getWritingContests = async () => (await getAll<WritingContest>("writingContests")).sort((a, b) => b.deadline.getTime() - a.deadline.getTime());
+export async function getCurrentWritingContest() {
+  const list = await getAll<WritingContest>("writingContests", where("isCurrent", "==", true), qlimit(1));
+  return list[0] ?? null;
+}
 
 // ───────────── İçerik ─────────────
 

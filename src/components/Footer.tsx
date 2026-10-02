@@ -1,7 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { Logo } from "./Header";
 import { SITE } from "@/lib/constants";
+import { useT } from "@/lib/i18n";
+import { ArchMark, PenMark } from "./Logos";
 
 const COLS = [
   {
@@ -13,7 +19,7 @@ const COLS = [
   },
   {
     title: "Kültür & Sanat",
-    links: [["Genç Sesler Müzik Yarışması", "/muzik"], ["Gençlik Tiyatro Festivali", "/tiyatro"], ["Video Arşivi", "/videolar"], ["Tesisler & Sahneler", "/tesisler"]],
+    links: [["Genç Sesler Müzik Yarışması", "/muzik"], ["Gençlik Tiyatro Festivali", "/tiyatro"], ["Genç Kalemler Yazarlık Yarışması", "/tiyatro/yazarlik"], ["Video Arşivi", "/videolar"], ["Tesisler & Sahneler", "/tesisler"]],
   },
   {
     title: "Organizasyon",
@@ -22,8 +28,11 @@ const COLS = [
 ] as const;
 
 export function Footer() {
+  const t = useT();
+  // Koyu zeminli bölümlerde (müzik, tiyatro) sayfa ile alt bilgi arasında açık renkli boşluk kalmasın
+  const dark = /^\/(muzik|tiyatro)/.test(usePathname());
   return (
-    <footer className="bg-basalt-wall relative mt-20 text-white">
+    <footer className={cn("bg-basalt-wall relative text-white", dark ? "mt-0" : "mt-20")}>
       <div className="h-1 bg-gradient-to-r from-dicle-400 via-fuchsia-500 to-amber-400" />
       <div className="container-x grid gap-10 py-14 lg:grid-cols-[1.3fr_2fr]">
         <div>
@@ -35,9 +44,12 @@ export function Footer() {
             </span>
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/60">
-            Diyarbakır&apos;ın 17 ilçesindeki gençleri spor, müzik ve tiyatro ile buluşturan şehir çapında gençlik organizasyonu.
-            Ligler, yarışmalar ve festivaller tek çatı altında.
+            {t("Diyarbakır'ın 17 ilçesindeki gençleri spor, müzik ve tiyatro ile buluşturan şehir çapında gençlik organizasyonu. Ligler, yarışmalar ve festivaller tek çatı altında.")}
           </p>
+          <div className="mt-4 flex items-center gap-3 text-white/40">
+            <ArchMark size={22} /><span className="text-[11px] uppercase tracking-[0.2em]">{t("Ligler")}</span>
+            <PenMark size={20} /><span className="text-[11px] uppercase tracking-[0.2em]">{t("Genç Kalemler")}</span>
+          </div>
           <div className="mt-5 space-y-2 text-sm text-white/70">
             <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-dicle-400" /> {SITE.address}</p>
             <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-dicle-400" /> {SITE.phone}</p>
@@ -51,10 +63,10 @@ export function Footer() {
         <div className="grid gap-8 sm:grid-cols-3">
           {COLS.map((c) => (
             <div key={c.title}>
-              <p className="eyebrow mb-4 text-white/40">{c.title}</p>
+              <p className="eyebrow mb-4 text-white/40">{t(c.title)}</p>
               <ul className="space-y-2.5">
                 {c.links.map(([label, href]) => (
-                  <li key={href}><Link href={href} className="text-sm text-white/70 transition hover:text-white">{label}</Link></li>
+                  <li key={href}><Link href={href} className="text-sm text-white/70 transition hover:text-white">{t(label)}</Link></li>
                 ))}
               </ul>
             </div>
@@ -63,8 +75,8 @@ export function Footer() {
       </div>
       <div className="border-t border-white/10">
         <div className="container-x flex flex-col items-center justify-between gap-2 py-5 text-xs text-white/40 sm:flex-row">
-          <p>© {new Date().getFullYear()} {SITE.org}. Tüm hakları saklıdır.</p>
-          <Link href="/yonetim" className="hover:text-white/70">Yönetim Paneli</Link>
+          <p>© {new Date().getFullYear()} {SITE.org}. {t("Tüm hakları saklıdır.")}</p>
+          <Link href="/yonetim" className="hover:text-white/70">{t("Yönetim Paneli")}</Link>
         </div>
       </div>
     </footer>

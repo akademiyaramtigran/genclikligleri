@@ -11,12 +11,14 @@ import { cn, formatDateTime } from "@/lib/utils";
 import { Badge, PageHero } from "@/components/ui";
 
 
+import { useT } from "@/lib/i18n";
 export default function TrackPage() {
   return <Suspended><Inner /></Suspended>;
 }
 
 function Inner() {
-  useTitle("Başvuru Takip");
+  const t = useT();
+  useTitle(t("Başvuru Takip"));
   const sp = { kod: useParam("kod"), eposta: useParam("eposta") };
   const code = sp.kod?.trim().toUpperCase();
   const email = sp.eposta?.trim().toLowerCase();
@@ -32,12 +34,12 @@ function Inner() {
 
   return (
     <>
-      <PageHero eyebrow="Başvurular" title="Başvuru Takip" description="Başvuru sırasında verilen takip kodu ve e-posta adresiyle başvurunuzun durumunu sorgulayın." />
+      <PageHero eyebrow={t("Başvurular")} title={t("Başvuru Takip")} description={t("Başvuru sırasında verilen takip kodu ve e-posta adresiyle başvurunuzun durumunu sorgulayın.")} />
       <div className="container-x max-w-3xl py-10">
         <form className="card grid gap-4 p-6 sm:grid-cols-[1fr_1fr_auto] sm:items-end" action={withBase("/basvuru/takip/")}>
-          <div><label className="label" htmlFor="kod">Takip Kodu</label><input id="kod" name="kod" defaultValue={sp.kod} required placeholder="DGLXXXXX" className="input font-mono uppercase tracking-widest" /></div>
-          <div><label className="label" htmlFor="eposta">E-posta</label><input id="eposta" name="eposta" type="email" defaultValue={sp.eposta} required className="input" /></div>
-          <button className="btn-primary"><Search className="h-4 w-4" /> Sorgula</button>
+          <div><label className="label" htmlFor="kod">{t("Takip Kodu")}</label><input id="kod" name="kod" defaultValue={sp.kod} required placeholder={t("DGLXXXXX")} className="input font-mono uppercase tracking-widest" /></div>
+          <div><label className="label" htmlFor="eposta">{t("E-posta")}</label><input id="eposta" name="eposta" type="email" defaultValue={sp.eposta} required className="input" /></div>
+          <button className="btn-primary"><Search className="h-4 w-4" /> {t("Sorgula")}</button>
         </form>
 
         {searched && loading && <PageLoader className="min-h-[20vh]" />}
@@ -53,9 +55,9 @@ function Inner() {
               <p className="text-xs text-basalt-500">{app.periodTitle}</p>
               <h2 className="mt-1 text-2xl font-semibold">{app.title}</h2>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Badge tone={APPLICATION_STATUS[app.status]?.tone}>{APPLICATION_STATUS[app.status]?.label}</Badge>
+                <Badge tone={APPLICATION_STATUS[app.status]?.tone}>{t(APPLICATION_STATUS[app.status]?.label ?? "")}</Badge>
                 <span className="font-mono text-xs text-basalt-500">{app.id}</span>
-                <span className="text-xs text-basalt-500">· Başvuru: {formatDateTime(app.createdAt)}</span>
+                <span className="text-xs text-basalt-500">{t("· Başvuru:")} {formatDateTime(app.createdAt)}</span>
               </div>
             </div>
             <div className="p-6">
@@ -78,19 +80,19 @@ function Inner() {
               <p className="mt-6 rounded-xl bg-basalt-50 p-4 text-sm text-basalt-700">{APPLICATION_STATUS[app.status]?.description}</p>
               {app.publicNote && (
                 <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200">
-                  <p className="font-semibold">Organizasyon notu</p>
+                  <p className="font-semibold">{t("Organizasyon notu")}</p>
                   <p className="mt-1 whitespace-pre-line">{app.publicNote}</p>
                 </div>
               )}
               <div className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
-                <div><p className="text-basalt-500">Kayıtlı kişi sayısı</p><p className="font-semibold">{app.memberCount}</p></div>
-                <div><p className="text-basalt-500">Yüklenen belgeler</p><p className="font-semibold">{app.docLabels?.length ? app.docLabels.map((d) => d.split("(")[0]).join(", ") : "—"}</p></div>
+                <div><p className="text-basalt-500">{t("Kayıtlı kişi sayısı")}</p><p className="font-semibold">{app.memberCount}</p></div>
+                <div><p className="text-basalt-500">{t("Yüklenen belgeler")}</p><p className="font-semibold">{app.docLabels?.length ? app.docLabels.map((d) => d.split("(")[0]).join(", ") : "—"}</p></div>
               </div>
-              {app.reviewedAt && <p className="mt-4 text-xs text-basalt-400">Son güncelleme: {formatDateTime(app.reviewedAt)}</p>}
+              {app.reviewedAt && <p className="mt-4 text-xs text-basalt-400">{t("Son güncelleme:")} {formatDateTime(app.reviewedAt)}</p>}
             </div>
           </div>
         )}
-        <p className="mt-6 text-center text-sm text-basalt-500">Takip kodunuzu kaybettiyseniz <Link href="/iletisim" className="link">iletişim formu</Link> ile bize ulaşın.</p>
+        <p className="mt-6 text-center text-sm text-basalt-500">{t("Takip kodunuzu kaybettiyseniz")} <Link href="/iletisim" className="link">{t("iletişim formu")}</Link> {t("ile bize ulaşın.")}</p>
       </div>
     </>
   );

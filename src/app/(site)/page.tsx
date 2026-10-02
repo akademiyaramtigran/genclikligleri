@@ -13,6 +13,8 @@ import { MatchCard } from "@/components/sport";
 import { Countdown } from "@/components/Countdown";
 import { YouTubeThumb } from "@/components/YouTubeEmbed";
 import { ErrorBox, PageLoader } from "@/components/client";
+import { useT } from "@/lib/i18n";
+import { ArchMark, PenMark, StageBadge } from "@/components/Logos";
 
 async function loadHome() {
   const [teamCount, playerCount, leagues, matches, periods, competition, festival, announcements, videos] = await Promise.all([
@@ -34,6 +36,7 @@ async function loadHome() {
 }
 
 export default function HomePage() {
+  const t = useT();
   const { data, error } = useData(loadHome, []);
   if (error) return <ErrorBox message={error} />;
   if (!data) return <PageLoader />;
@@ -73,43 +76,43 @@ export default function HomePage() {
 
         <div className="container-x relative pb-14 pt-12 sm:pt-20">
           <div className="max-w-3xl animate-fade-up">
-            <Badge tone="dark" dot className="mb-5">2026-2027 Sezonu Devam Ediyor</Badge>
+            <Badge tone="dark" dot className="mb-5">{t("2026-2027 Sezonu Devam Ediyor")}</Badge>
             <h1 className="font-display text-5xl font-semibold uppercase leading-[0.95] tracking-wide text-balance sm:text-7xl">
-              Şehrin gençliği <span className="bg-gradient-to-r from-dicle-300 via-fuchsia-400 to-amber-300 bg-clip-text text-transparent">tek sahada</span>
+              {t("Şehrin gençliği")} <span className="bg-gradient-to-r from-dicle-300 via-fuchsia-400 to-amber-300 bg-clip-text text-transparent">{t("tek sahada")}</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg text-white/70">
-              Diyarbakır&apos;ın 17 ilçesinden gençler; futbol, basketbol, voleybol ve hentbol liglerinde, müzik yarışmasında ve tiyatro festivalinde buluşuyor.
+              {t("Diyarbakır'ın 17 ilçesinden gençler; futbol, basketbol, voleybol ve hentbol liglerinde, müzik yarışmasında ve tiyatro festivalinde buluşuyor.")}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/spor" className="btn bg-white px-6 py-3 text-basalt-950 hover:bg-dicle-300">Lig Merkezi <ArrowRight className="h-4 w-4" /></Link>
-              <Link href="/basvuru" className="btn border border-white/20 bg-white/5 px-6 py-3 text-white hover:bg-white/10">Başvuru Yap</Link>
+              <Link href="/spor" className="btn bg-white px-6 py-3 text-basalt-950 hover:bg-dicle-300">{t("Lig Merkezi")} <ArrowRight className="h-4 w-4" /></Link>
+              <Link href="/basvuru" className="btn border border-white/20 bg-white/5 px-6 py-3 text-white hover:bg-white/10">{t("Başvuru Yap")}</Link>
             </div>
           </div>
 
           {/* Üç ana bölüm */}
           <div className="mt-14 grid gap-4 md:grid-cols-3">
             <Link href="/spor" className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-dicle-600 to-emerald-900 p-6 ring-1 ring-white/10 transition hover:-translate-y-1">
-              <Trophy className="absolute -right-4 -top-4 h-32 w-32 text-white/10 transition group-hover:rotate-12" />
-              <p className="eyebrow text-dicle-200">Spor</p>
-              <h3 className="mt-2 font-display text-3xl font-semibold uppercase">Gençlik Ligleri</h3>
-              <p className="mt-1 text-sm text-white/70">4 branş · Erkek & Kadın · {leagues.length} lig</p>
-              <div className="mt-6 flex gap-2 text-2xl">{SPORT_LIST.map((s) => <span key={s.key} title={s.label}>{s.emoji}</span>)}</div>
+              <ArchMark size={64} className="absolute -right-2 top-3 opacity-25 transition group-hover:opacity-50" />
+              <p className="eyebrow text-dicle-200">{t("Spor")}</p>
+              <h3 className="mt-2 font-display text-3xl font-semibold uppercase">{t("Gençlik Ligleri")}</h3>
+              <p className="mt-1 text-sm text-white/70">{t("4 branş · Erkek & Kadın · {n} lig", { n: leagues.length })}</p>
+              <div className="mt-6 flex gap-2 text-2xl">{SPORT_LIST.map((s) => <span key={s.key} title={t(s.label)}>{s.emoji}</span>)}</div>
               <ArrowRight className="absolute bottom-6 right-6 h-6 w-6 transition group-hover:translate-x-1" />
             </Link>
             <Link href="/muzik" className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-fuchsia-600 via-purple-700 to-[#1a0b2e] p-6 ring-1 ring-white/10 transition hover:-translate-y-1">
               <Mic2 className="absolute -right-4 -top-4 h-32 w-32 text-white/10 transition group-hover:-rotate-12" />
-              <p className="eyebrow text-fuchsia-200">Müzik Yarışması</p>
-              <h3 className="mt-2 font-music text-2xl font-bold uppercase">{competition ? `${competition.name} ${competition.edition}` : "Genç Sesler"}</h3>
-              <p className="mt-1 text-sm text-white/70">{competition ? `${music?.contestants.length ?? 0} yarışmacı · ${nextRound ? `Sıradaki: ${nextRound.name}` : "Tamamlandı"}` : "Yakında"}</p>
+              <p className="eyebrow text-fuchsia-200">{t("Müzik Yarışması")}</p>
+              <h3 className="mt-2 font-music text-2xl font-bold uppercase">{competition ? `${competition.name} ${competition.edition}` : t("Genç Sesler")}</h3>
+              <p className="mt-1 text-sm text-white/70">{competition ? `${music?.contestants.length ?? 0} ${t("yarışmacı")} · ${nextRound ? `${t("Sıradaki")}: ${nextRound.name}` : t("Tamamlandı")}` : t("Yakında")}</p>
               {nextRound && <p className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold"><CalendarDays className="h-3.5 w-3.5" /> {formatDate(nextRound.date)}</p>}
               <ArrowRight className="absolute bottom-6 right-6 h-6 w-6 transition group-hover:translate-x-1" />
             </Link>
-            <Link href="/tiyatro" className="group bg-curtain relative overflow-hidden rounded-3xl p-6 ring-1 ring-white/10 transition hover:-translate-y-1">
-              <Drama className="absolute -right-4 -top-4 h-32 w-32 text-amber-200/10 transition group-hover:rotate-12" />
-              <p className="eyebrow text-amber-300">Festival</p>
-              <h3 className="mt-2 font-serif text-3xl font-bold italic">{festival ? `${festival.edition} Tiyatro Festivali` : "Tiyatro Festivali"}</h3>
-              <p className="mt-1 text-sm text-white/70">{festival ? `${plays.length} oyun · ${formatShortDate(festival.startDate)} – ${formatShortDate(festival.endDate)}` : "Yakında"}</p>
-              {festival?.theme && <p className="mt-6 inline-flex rounded-full bg-amber-400/15 px-3 py-1 text-xs font-semibold text-amber-200">“{festival.theme}”</p>}
+            <Link href="/tiyatro" className="group relative overflow-hidden rounded-3xl bg-stage-950 p-6 ring-1 ring-rose-500/40 transition hover:-translate-y-1">
+              <Drama className="absolute -right-4 -top-4 h-32 w-32 text-rose-500/15 transition group-hover:rotate-12" />
+              <p className="eyebrow text-rose-400">{t("Festival")}</p>
+              <h3 className="mt-2 font-stage text-3xl uppercase">{festival ? `${festival.edition} ${t("Tiyatro Festivali")}` : t("Tiyatro Festivali")}</h3>
+              <p className="mt-1 text-sm text-white/70">{festival ? `${plays.length} ${t("oyun")} · ${formatShortDate(festival.startDate)} – ${formatShortDate(festival.endDate)}` : t("Yakında")}</p>
+              <p className="mt-6 inline-flex items-center gap-2 border border-rose-500/50 px-3 py-1 text-xs font-semibold text-rose-200"><PenMark size={14} /> {t("Genç Kalemler yazarlık yarışması")}</p>
               <ArrowRight className="absolute bottom-6 right-6 h-6 w-6 transition group-hover:translate-x-1" />
             </Link>
           </div>
@@ -117,7 +120,7 @@ export default function HomePage() {
           {/* Rakamlar */}
           <div className="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10 sm:grid-cols-4">
             {[
-              [teamCount, "Takım", Shield], [playerCount, "Lisanslı Sporcu", Users], [matchCount, "Oynanan Maç", Trophy], [17, "İlçe", MapPin],
+              [teamCount, t("Takım"), Shield], [playerCount, t("Lisanslı Sporcu"), Users], [matchCount, t("Oynanan Maç"), Trophy], [17, t("İlçe"), MapPin],
             ].map(([v, l, Icon]) => {
               const I = Icon as typeof Trophy;
               return (
@@ -158,13 +161,13 @@ export default function HomePage() {
             <Sparkles className="absolute -right-6 -top-6 h-40 w-40 text-white/10" />
             <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <Badge tone="dark" dot>Başvurular Açık · {daysLeft(openPeriod.endDate)} gün kaldı</Badge>
+                <Badge tone="dark" dot>{t("Başvurular Açık")} · {t("{n} gün kaldı", { n: daysLeft(openPeriod.endDate) })}</Badge>
                 <h2 className="mt-3 font-display text-2xl font-semibold uppercase sm:text-3xl">{openPeriod.title}</h2>
                 <p className="mt-1 max-w-2xl text-white/85">{openPeriod.summary}</p>
               </div>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <Countdown to={openPeriod.endDate} label="Son başvuruya" />
-                <Link href={`/basvuru/detay?s=${openPeriod.slug}`} className="btn bg-white px-6 py-3 text-emerald-800 hover:bg-emerald-50">Hemen Başvur <ArrowRight className="h-4 w-4" /></Link>
+                <Countdown to={openPeriod.endDate} label={t("Son başvuruya")} />
+                <Link href={`/basvuru/detay?s=${openPeriod.slug}`} className="btn bg-white px-6 py-3 text-emerald-800 hover:bg-emerald-50">{t("Hemen Başvur")} <ArrowRight className="h-4 w-4" /></Link>
               </div>
             </div>
           </div>
@@ -173,11 +176,11 @@ export default function HomePage() {
 
       {/* ───────────── MAÇLAR ───────────── */}
       <section className="container-x pt-16">
-        <SectionHeader eyebrow="Maç Merkezi" title="Sıradaki Maçlar" description="Bu hafta şehrin sahalarında ve salonlarında oynanacak karşılaşmalar." action={<Link href="/spor/fikstur" className="btn-outline">Tüm Fikstür <ArrowRight className="h-4 w-4" /></Link>} />
+        <SectionHeader eyebrow={t("Maç Merkezi")} title={t("Sıradaki Maçlar")} description={t("Bu hafta şehrin sahalarında ve salonlarında oynanacak karşılaşmalar.")} action={<Link href="/spor/fikstur" className="btn-outline">{t("Tüm Fikstür")} <ArrowRight className="h-4 w-4" /></Link>} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {upcoming.slice(0, 4).map((m) => <MatchCard key={m.id} m={m} />)}
         </div>
-        <h3 className="mb-4 mt-10 font-display text-xl font-semibold uppercase tracking-wide text-basalt-800">Son Sonuçlar</h3>
+        <h3 className="mb-4 mt-10 font-display text-xl font-semibold uppercase tracking-wide text-basalt-800">{t("Son Sonuçlar")}</h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {recent.slice(0, 8).map((m) => <MatchCard key={m.id} m={m} />)}
         </div>
@@ -185,21 +188,21 @@ export default function HomePage() {
 
       {/* ───────────── PUAN DURUMLARI ───────────── */}
       <section className="container-x pt-16">
-        <SectionHeader eyebrow="Puan Durumu" title="Liglerin Zirvesi" description="Her branşta erkek ve kadın liglerinin ilk üç sırası." action={<Link href="/spor" className="btn-outline">Tüm Ligler <ArrowRight className="h-4 w-4" /></Link>} />
+        <SectionHeader eyebrow={t("Puan Durumu")} title={t("Liglerin Zirvesi")} description={t("Her branşta erkek ve kadın liglerinin ilk üç sırası.")} action={<Link href="/spor" className="btn-outline">{t("Tüm Ligler")} <ArrowRight className="h-4 w-4" /></Link>} />
         <div className="grid gap-5 md:grid-cols-2">
           {leagueCards.map(({ sport, byGender }) => (
             <div key={sport.key} className="card overflow-hidden">
               <div className={cn("flex items-center justify-between bg-gradient-to-r px-5 py-3 text-white", sport.gradient)}>
-                <h3 className="font-display text-lg font-semibold uppercase tracking-wider">{sport.emoji} {sport.label}</h3>
+                <h3 className="font-display text-lg font-semibold uppercase tracking-wider">{sport.emoji} {t(sport.label)}</h3>
               </div>
               <div className="grid divide-y divide-basalt-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
                 {byGender.map(({ gender, league, rows }) => (
                   <div key={gender} className="p-4">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className={cn("text-xs font-bold uppercase tracking-wider", gender === "KADIN" ? "text-rose-600" : "text-sky-600")}>{gender === "KADIN" ? "Kadınlar" : "Erkekler"}</span>
-                      {league && <Link href={`/spor/lig?s=${league.slug}`} className="text-xs font-medium text-basalt-500 hover:text-basalt-900">Tablo →</Link>}
+                      <span className={cn("text-xs font-bold uppercase tracking-wider", gender === "KADIN" ? "text-rose-600" : "text-sky-600")}>{gender === "KADIN" ? t("Kadınlar") : t("Erkekler")}</span>
+                      {league && <Link href={`/spor/lig?s=${league.slug}`} className="text-xs font-medium text-basalt-500 hover:text-basalt-900">{t("Tablo →")}</Link>}
                     </div>
-                    {rows.length === 0 ? <p className="text-sm text-basalt-400">Lig henüz başlamadı</p> : (
+                    {rows.length === 0 ? <p className="text-sm text-basalt-400">{t("Lig henüz başlamadı")}</p> : (
                       <ol className="space-y-1.5">
                         {rows.map((r) => (
                           <li key={r.teamId}>
@@ -223,22 +226,22 @@ export default function HomePage() {
 
       {/* ───────────── KRALLIK ───────────── */}
       <section className="container-x pt-16">
-        <SectionHeader eyebrow="Krallık Yarışı" title="Ligin Yıldızları" action={<Link href="/spor/krallik" className="btn-outline">Tüm Sıralamalar <ArrowRight className="h-4 w-4" /></Link>} />
+        <SectionHeader eyebrow={t("Krallık Yarışı")} title={t("Ligin Yıldızları")} action={<Link href="/spor/krallik" className="btn-outline">{t("Tüm Sıralamalar")} <ArrowRight className="h-4 w-4" /></Link>} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {scorerHighlights.map(({ sport, erkek, kadin }) => (
             <div key={sport.key} className="card p-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-basalt-500">{sport.emoji} {sport.label} · {sport.scorerTitle}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-basalt-500">{sport.emoji} {t(sport.label)} · {t(sport.scorerTitle)}</p>
               {[erkek, kadin].map((p, i) =>
                 p ? (
                   <Link key={p.playerId} href={`/spor/oyuncu?s=${p.slug}`} className="mt-4 flex items-center gap-3 rounded-xl p-1 hover:bg-basalt-50">
                     <Avatar name={p.name} src={p.photoUrl} size={44} color={p.teamColor} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">{p.name}</p>
-                      <p className="truncate text-xs text-basalt-500"><span className={i === 0 ? "text-sky-600" : "text-rose-600"}>{i === 0 ? "Erkek" : "Kadın"}</span> · {p.teamName}</p>
+                      <p className="truncate text-xs text-basalt-500"><span className={i === 0 ? "text-sky-600" : "text-rose-600"}>{i === 0 ? t("Erkek") : t("Kadın")}</span> · {p.teamName}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-display text-2xl font-bold">{p.total}</p>
-                      <p className="text-[10px] uppercase text-basalt-400">{sport.scorerUnit}</p>
+                      <p className="text-[10px] uppercase text-basalt-400">{t(sport.scorerUnit)}</p>
                     </div>
                   </Link>
                 ) : null,
@@ -256,7 +259,7 @@ export default function HomePage() {
             <div className="pointer-events-none absolute -top-40 right-10 h-[30rem] w-40 origin-top animate-spot bg-gradient-to-b from-cyan-400/30 to-transparent blur-2xl [animation-delay:-4s]" />
             <div className="relative grid gap-10 lg:grid-cols-2 lg:items-center">
               <div>
-                <p className="eyebrow flex items-center gap-2 text-fuchsia-300"><Music2 className="h-4 w-4" /> Müzik Yarışması</p>
+                <p className="eyebrow flex items-center gap-2 text-fuchsia-300"><Music2 className="h-4 w-4" /> {t("Müzik Yarışması")}</p>
                 <h2 className="mt-3 font-music text-4xl font-black uppercase leading-none sm:text-5xl">
                   {competition.name} <span className="bg-gradient-to-r from-fuchsia-400 to-cyan-300 bg-clip-text text-transparent">{competition.edition}</span>
                 </h2>
@@ -268,8 +271,8 @@ export default function HomePage() {
                   </div>
                 )}
                 <div className="mt-8 flex flex-wrap gap-3">
-                  <Link href="/muzik" className="btn bg-fuchsia-600 px-6 py-3 text-white hover:bg-fuchsia-500">Yarışmaya Git</Link>
-                  {competition.votingOpen && <Link href="/muzik#oylama" className="btn border border-white/20 px-6 py-3 text-white hover:bg-white/10">Oy Ver</Link>}
+                  <Link href="/muzik" className="btn bg-fuchsia-600 px-6 py-3 text-white hover:bg-fuchsia-500">{t("Yarışmaya Git")}</Link>
+                  {competition.votingOpen && <Link href="/muzik#oylama" className="btn border border-white/20 px-6 py-3 text-white hover:bg-white/10">{t("Oy Ver")}</Link>}
                 </div>
               </div>
               {nextRound && nextRound.performances.length > 0 && (
@@ -293,33 +296,35 @@ export default function HomePage() {
       {/* ───────────── TİYATRO ───────────── */}
       {festival && (
         <section className="container-x pt-10">
-          <div className="bg-curtain relative overflow-hidden rounded-3xl p-6 text-white sm:p-10">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-black/50 to-transparent" />
-            <div className="pointer-events-none absolute left-1/2 top-0 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-amber-300/20 blur-3xl" />
+          <div className="relative overflow-hidden rounded-3xl bg-stage-950 p-6 font-grotesk text-stone-100 sm:p-10">
+            <div className="pointer-events-none absolute -right-20 top-0 h-72 w-72 rounded-full bg-rose-600/20 blur-3xl" />
             <div className="relative grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:items-center">
               <div>
-                <p className="eyebrow flex items-center gap-2 text-amber-300"><Drama className="h-4 w-4" /> Festival</p>
-                <h2 className="mt-3 font-serif text-4xl font-bold leading-tight sm:text-5xl">
+                <p className="eyebrow flex items-center gap-2 text-rose-400"><StageBadge size={22} /> {t("Festival")}</p>
+                <h2 className="mt-3 font-stage text-5xl uppercase leading-[0.95] sm:text-6xl">
                   {festival.edition} {festival.name}
                 </h2>
-                {festival.theme && <p className="mt-3 font-serif text-xl italic text-amber-200">“{festival.theme}”</p>}
-                <p className="mt-4 max-w-md text-white/70">{festival.tagline}</p>
-                <Link href="/tiyatro" className="btn mt-8 bg-amber-400 px-6 py-3 text-curtain-950 hover:bg-amber-300">Festival Programı</Link>
+                {festival.theme && <p className="mt-3 text-lg font-bold uppercase tracking-[0.15em] text-rose-400">{festival.theme}</p>}
+                <p className="mt-4 max-w-md text-stone-400">{festival.tagline}</p>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <Link href="/tiyatro" className="inline-flex h-12 items-center bg-rose-500 px-6 font-bold uppercase tracking-wider text-stage-950 hover:bg-rose-400">{t("Festival Programı")}</Link>
+                  <Link href="/tiyatro/yazarlik" className="inline-flex h-12 items-center gap-2 border border-stone-200/70 px-6 font-bold uppercase tracking-wider hover:bg-white hover:text-stage-950"><PenMark size={18} /> {t("Genç Kalemler")}</Link>
+                </div>
               </div>
               <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-widest text-amber-200/70">Sıradaki Gösterimler</p>
-                {nextShows.length === 0 && <p className="text-white/60">Festival programı tamamlandı.</p>}
+                <p className="text-xs font-bold uppercase tracking-widest text-stone-500">{t("Sıradaki Gösterimler")}</p>
+                {nextShows.length === 0 && <p className="text-stone-400">{t("Festival programı tamamlandı.")}</p>}
                 {nextShows.map((s) => (
-                  <Link key={s.id} href={`/tiyatro/oyun?s=${s.play.slug}`} className="flex items-center gap-4 rounded-2xl bg-black/25 p-4 ring-1 ring-amber-200/10 transition hover:bg-black/40">
+                  <Link key={s.id} href={`/tiyatro/oyun?s=${s.play.slug}`} className="group flex items-center gap-4 bg-stage-900 p-4 transition hover:bg-[#232327]">
                     <div className="w-16 shrink-0 text-center">
-                      <p className="font-serif text-3xl font-bold leading-none text-amber-300">{new Date(s.date).toLocaleDateString("tr-TR", { day: "numeric", timeZone: "Europe/Istanbul" })}</p>
+                      <p className="font-stage text-4xl leading-none text-rose-500">{new Date(s.date).toLocaleDateString("tr-TR", { day: "numeric", timeZone: "Europe/Istanbul" })}</p>
                       <p className="text-[10px] uppercase tracking-wider text-white/60">{formatWeekday(s.date).slice(0, 3)} · {formatTime(s.date)}</p>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-serif text-lg font-semibold">{s.play.title}</p>
-                      <p className="truncate text-sm text-white/60">{s.play.groupName} · {s.venueName}</p>
+                      <p className="truncate font-stage text-2xl uppercase group-hover:text-rose-400">{s.play.title}</p>
+                      <p className="truncate text-sm text-stone-400">{s.play.groupName} · {s.venueName}</p>
                     </div>
-                    <Badge tone="amber">{s.play.genre}</Badge>
+                    <Badge tone="rose">{t(s.play.genre)}</Badge>
                   </Link>
                 ))}
               </div>
@@ -331,7 +336,7 @@ export default function HomePage() {
       {/* ───────────── BAŞVURULAR ───────────── */}
       {periods.length > 0 && (
         <section className="container-x pt-16">
-          <SectionHeader eyebrow="Başvuru Dönemleri" title="Sen de Katıl" description="Takımını kur, grubunla sahneye çık ya da topluluğunla festivale katıl." action={<Link href="/basvuru" className="btn-outline">Tüm Başvurular <ArrowRight className="h-4 w-4" /></Link>} />
+          <SectionHeader eyebrow={t("Başvuru Dönemleri")} title={t("Sen de Katıl")} description={t("Takımını kur, grubunla sahneye çık ya da topluluğunla festivale katıl.")} action={<Link href="/basvuru" className="btn-outline">{t("Tüm Başvurular")} <ArrowRight className="h-4 w-4" /></Link>} />
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {periods.map((p) => {
               const st = periodState(p);
@@ -339,12 +344,12 @@ export default function HomePage() {
               return (
                 <Link key={p.id} href={`/basvuru/detay?s=${p.slug}`} className="card group flex flex-col p-5 transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="flex items-center justify-between">
-                    <Badge tone={p.category === "SPOR" ? "green" : p.category === "MUZIK" ? "fuchsia" : "amber"}>{cat?.label}</Badge>
-                    <Badge tone={st === "OPEN" ? "green" : "amber"} dot={st === "OPEN"}>{st === "OPEN" ? `${daysLeft(p.endDate)} gün kaldı` : `${formatShortDate(p.startDate)}'da açılıyor`}</Badge>
+                    <Badge tone={p.category === "SPOR" ? "green" : p.category === "MUZIK" ? "fuchsia" : p.category === "YAZARLIK" ? "rose" : "amber"}>{t(cat?.label ?? "")}</Badge>
+                    <Badge tone={st === "OPEN" ? "green" : "amber"} dot={st === "OPEN"}>{st === "OPEN" ? t("{n} gün kaldı", { n: daysLeft(p.endDate) }) : t("{d} tarihinde açılıyor", { d: formatShortDate(p.startDate) })}</Badge>
                   </div>
                   <h3 className="mt-4 font-semibold leading-snug text-basalt-900 group-hover:text-dicle-700">{p.title}</h3>
                   <p className="mt-2 line-clamp-3 flex-1 text-sm text-basalt-500">{p.summary}</p>
-                  <p className="mt-4 text-sm font-semibold text-dicle-700">Şartları incele →</p>
+                  <p className="mt-4 text-sm font-semibold text-dicle-700">{t("Şartları incele →")}</p>
                 </Link>
               );
             })}
@@ -355,13 +360,13 @@ export default function HomePage() {
       {/* ───────────── VİDEOLAR & DUYURULAR ───────────── */}
       <section className="container-x grid gap-10 pt-16 lg:grid-cols-[1.4fr_1fr]">
         <div>
-          <SectionHeader eyebrow="Video Arşivi" title="İzle" action={<Link href="/videolar" className="btn-outline"><VideoIcon className="h-4 w-4" /> Tümü</Link>} />
+          <SectionHeader eyebrow={t("Video Arşivi")} title={t("İzle")} action={<Link href="/videolar" className="btn-outline"><VideoIcon className="h-4 w-4" /> {t("Tümü")}</Link>} />
           <div className="grid gap-4 sm:grid-cols-2">
             {videos.map((v) => (
               <Link key={v.id} href={`/videolar?v=${v.id}`} className="group overflow-hidden rounded-2xl bg-white shadow-card">
                 <YouTubeThumb url={v.youtubeUrl} />
                 <div className="p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-basalt-400">{ANNOUNCEMENT_CATEGORIES[v.category]}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-basalt-400">{t(ANNOUNCEMENT_CATEGORIES[v.category] ?? "")}</p>
                   <p className="line-clamp-1 font-semibold">{v.title}</p>
                 </div>
               </Link>
@@ -369,13 +374,13 @@ export default function HomePage() {
           </div>
         </div>
         <div>
-          <SectionHeader eyebrow="Duyurular" title="Haberler" action={<Link href="/duyurular" className="btn-outline">Tümü</Link>} />
+          <SectionHeader eyebrow={t("Duyurular")} title={t("Haberler")} action={<Link href="/duyurular" className="btn-outline">{t("Tümü")}</Link>} />
           <div className="card divide-y divide-basalt-100">
             {announcements.map((a) => (
               <Link key={a.id} href={`/duyurular/oku?s=${a.slug}`} className="block p-4 transition hover:bg-basalt-50">
                 <div className="flex items-center gap-2 text-xs text-basalt-500">
-                  {a.isPinned && <Badge tone="red">Önemli</Badge>}
-                  <span className="font-semibold uppercase tracking-wider">{ANNOUNCEMENT_CATEGORIES[a.category]}</span>
+                  {a.isPinned && <Badge tone="red">{t("Önemli")}</Badge>}
+                  <span className="font-semibold uppercase tracking-wider">{t(ANNOUNCEMENT_CATEGORIES[a.category] ?? "")}</span>
                   <span>· {formatDate(a.publishedAt)}</span>
                 </div>
                 <p className="mt-1 font-semibold text-basalt-900">{a.title}</p>

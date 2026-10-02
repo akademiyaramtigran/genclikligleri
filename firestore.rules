@@ -19,7 +19,9 @@ service cloud.firestore {
     function can(unit) {
       return isAdmin() && (adminDoc().data.role == 'SUPER_ADMIN' || adminDoc().data.scope == 'ALL' || adminDoc().data.scope == unit);
     }
-    function validCategory(c) { return c in ['SPOR', 'MUZIK', 'TIYATRO']; }
+    // Başvuru kategorisi → birim (yazarlık yarışmasını tiyatro birimi yönetir)
+    function canCat(c) { return can(c) || (c == 'YAZARLIK' && can('TIYATRO')); }
+    function validCategory(c) { return c in ['SPOR', 'MUZIK', 'TIYATRO', 'YAZARLIK']; }
     // Bugünün tarihi (İstanbul, UTC+3) — "YYYY-MM-DD" ile karşılaştırma
     function isToday(day) {
       let t = request.time + duration.value(3, 'h');
@@ -62,12 +64,14 @@ service cloud.firestore {
     match /theatreFestivals/{id} { allow read: if true; allow write: if can('TIYATRO'); }
     match /theatreGroups/{id}    { allow read: if true; allow write: if can('TIYATRO'); }
     match /theatrePlays/{id}     { allow read: if true; allow write: if can('TIYATRO'); }
+    // Genç Kalemler oyun yazarlığı yarışması
+    match /writingContests/{id}  { allow read: if true; allow write: if can('TIYATRO'); }
 
     // ───────── Başvurular ─────────
     match /periods/{id} {
       allow read: if resource.data.isPublished == true || isAdmin();
-      allow create, update: if can(request.resource.data.category);
-      allow delete: if can(resource.data.category);
+      allow create, update: if canCat(request.resource.data.category);
+      allow delete: if canCat(resource.data.category);
     }
 
     match /applications/{code} {
@@ -82,7 +86,7 @@ service cloud.firestore {
         && validCategory(request.resource.data.category)
         && request.resource.data.members.size() <= 60
         && request.resource.data.documents.size() <= 10;
-      allow read, update, delete: if can(resource.data.category);
+      allow read, update, delete: if canCat(resource.data.category);
     }
 
     // Takip ekranı: kod bilinirse tek belge okunur (liste yok); e-posta özeti istemcide karşılaştırılır

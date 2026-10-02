@@ -3,7 +3,7 @@ import type { Config } from "tailwindcss";
 export default {
   content: ["./src/**/*.{ts,tsx}"],
   safelist: [
-    { pattern: /(bg|text|border|ring|from|to|via)-(emerald|orange|sky|violet|rose|fuchsia|amber|green|red|blue|slate|zinc|yellow|teal)-(50|100|200|300|400|500|600|700|800|900)/ },
+    { pattern: /(bg|text|border|ring|from|to|via)-(emerald|orange|sky|violet|rose|fuchsia|amber|green|red|blue|slate|zinc|yellow|teal|stone)-(50|100|200|300|400|500|600|700|800|900)/ },
   ],
   theme: {
     extend: {
@@ -12,6 +12,8 @@ export default {
         display: ["var(--font-oswald)", "Impact", "sans-serif"],
         serif: ["var(--font-playfair)", "Georgia", "serif"],
         music: ["var(--font-unbounded)", "var(--font-inter)", "sans-serif"],
+        stage: ["var(--font-anton)", "Impact", "sans-serif"],
+        grotesk: ["var(--font-grotesk)", "var(--font-inter)", "sans-serif"],
       },
       colors: {
         basalt: {
@@ -21,6 +23,7 @@ export default {
         dicle: { 300: "#5eead4", 400: "#2dd4bf", 500: "#14b8a6", 600: "#0d9488", 700: "#0f766e" },
         curtain: { 700: "#7f1d1d", 800: "#5c1414", 900: "#3b0b0b", 950: "#220606" },
         gold: { 300: "#fde68a", 400: "#fbbf24", 500: "#d4a017" },
+        stage: { 900: "#1c1c1f", 950: "#0c0c0e", line: "#2c2c30" },
       },
       boxShadow: {
         card: "0 1px 2px rgba(16,24,40,.04), 0 4px 16px -4px rgba(16,24,40,.08)",

@@ -297,6 +297,12 @@ export async function seedDemo(onProgress?: (msg: string) => void) {
       requirements: "Topluluk üyelerinin %70'i 14-26 yaş aralığında olmalıdır.\nOyun süresi 40-110 dakika arasında olmalıdır.\nTelifli eserler için yazar/temsilci izni zorunludur.\nHer topluluk en fazla bir oyunla başvurabilir.",
       requiredDocuments: [{ key: "metin", label: "Oyun metni (PDF)", required: true }, { key: "izin", label: "Telif / yazar izin belgesi", required: true, hint: "Telifi serbest eserlerde beyan yeterlidir" }, { key: "kadro", label: "Oyuncu ve teknik ekip listesi", required: true }, { key: "afis", label: "Oyun afişi", required: false }],
       minMembers: 3, maxMembers: 30, minAge: 14, maxAge: 26, quota: 12, fee: "Ücretsiz" },
+    { id: "genc-kalemler-oyun-yazarligi-basvurusu", title: "Genç Kalemler Oyun Yazarlığı Yarışması Başvurusu", category: "YAZARLIK", startDate: at(-5), endDate: at(45, "23:59"),
+      summary: "15-26 yaş arası gençler Türkçe, Kurmancî veya Zazakî yazdıkları özgün tiyatro metinleriyle başvurabilir.",
+      description: "Her dil kendi jürisiyle ayrı değerlendirilir. Finalist metinler festivalde okuma tiyatrosu olarak sahnelenir, birinci olan metin bir sonraki festivalde sahnelenir.",
+      requirements: "15-26 yaş arası olmak.\nMetin özgün olmalı ve daha önce yayımlanmamış ya da sahnelenmemiş olmalıdır.\nMetin Türkçe, Kurmancî veya Zazakî yazılabilir.\nMetnin üzerinde yazarın adı bulunmamalı; yalnızca eser adı ve rumuz yazılmalıdır.\nHer yazar en fazla bir metinle başvurabilir.",
+      requiredDocuments: [{ key: "metin", label: "Oyun metni (PDF veya Word)", required: true, hint: "Metnin üzerinde adınız olmasın; yalnızca eser adı ve rumuz yazın" }, { key: "ozgunluk", label: "İmzalı özgünlük beyanı", required: true }, { key: "kimlik", label: "Kimlik fotokopisi", required: true }, { key: "veli", label: "18 yaş altı için veli izin belgesi", required: false }],
+      minMembers: 1, maxMembers: 3, minAge: 15, maxAge: 26, fee: "Ücretsiz", contactInfo: "Tiyatro Koordinasyon Birimi" },
     { id: "basketbol-hentbol-takim-basvurusu", title: "Sezon Başı Basketbol & Hentbol Takım Başvurusu", category: "SPOR", sport: "BASKETBOL", startDate: at(-90), endDate: at(-40, "23:59"),
       summary: "Sezon başı takım başvuruları tamamlandı.", requirements: "Takım en az 10 oyuncudan oluşmalıdır.", requiredDocuments: docsSpor, minMembers: 10, maxMembers: 16, minAge: 14, maxAge: 19, fee: "Ücretsiz" },
   ];
@@ -406,6 +412,33 @@ export async function seedDemo(onProgress?: (msg: string) => void) {
       { id: "a1", category: "En İyi Oyun", winner: "Dağkapı Hikâyeleri — Sur Sahne Topluluğu", playId: prevPlay },
       { id: "a2", category: "En İyi Kadın Oyuncu", winner: "Dilan Erdem" }, { id: "a3", category: "En İyi Erkek Oyuncu", winner: "Cihan Varol" },
       { id: "a4", category: "En İyi Reji", winner: "Rojda Aslan" }, { id: "a5", category: "Seyirci Ödülü", winner: "Kayapınar Doğaçlama Atölyesi" },
+    ],
+  });
+
+  // Genç Kalemler — oyun yazarlığı yarışması
+  const step = (title: string, d: number | null, text: string) => ({ title, date: d == null ? null : at(d, "12:00"), text });
+  put("writingContests", `genc-kalemler-${y}`, {
+    slug: `genc-kalemler-${y}`, name: "Genç Kalemler", edition: "2.", isCurrent: true, status: "OPEN", deadline: at(45, "23:59"), minAge: 15, maxAge: 26,
+    tagline: "15-26 yaş arası gençler Türkçe, Kurmancî veya Zazakî yazdıkları özgün tiyatro metinleriyle katılabilir. Kazanan metin bir sonraki festivalde sahnelenir.",
+    description: "Genç Kalemler, şehrin genç yazarlarını tiyatro sahnesiyle buluşturmak için düzenlenen oyun yazarlığı yarışmasıdır. Her dil kendi jürisiyle ayrı değerlendirilir.",
+    rules: "Metin özgün olmalı, daha önce yayımlanmamış ve sahnelenmemiş olmalıdır.\nMetnin üzerinde yazarın adı bulunmamalı; yalnızca eser adı ve rumuz yazılmalıdır.\nUzun oyunlar 40 dakika ve üzeri, kısa oyunlar 10-30 dakika olmalıdır.\nOrtak yazılan metinlerde en fazla üç yazar olabilir.\nJüri kararları kesindir; dereceye giren metinlerin ilk sahneleme hakkı organizasyona aittir.",
+    prizes: ["Her dilde birinci olan metin festivalde sahnelenir", "Finalist metinler Genç Kalemler kitabında yayımlanır", "Dereceye girenlere yazarlık atölyesi bursu"],
+    timeline: [step("Başvurular", 45, "Son başvuru tarihine kadar metinler kabul edilir"), step("Kısa liste", 75, "Her dilde kısa liste açıklanır"), step("Okuma tiyatrosu", 100, "Finalist metinler sahnede okunur"), step("Ödül töreni", 106, "Festival kapanış gecesi")],
+    jury: [
+      { name: "Berivan Kaya", title: "Oyun yazarı", language: "TR" }, { name: "Murat Demir", title: "Dramaturg", language: "TR" },
+      { name: "Hêvî Zana", title: "Yazar, çevirmen", language: "KU" }, { name: "Serhat Bozkurt", title: "Tiyatro yönetmeni", language: "KU" },
+      { name: "Roşan Hayig", title: "Şair", language: "ZA" }, { name: "Kemal Astare", title: "Oyun yazarı", language: "ZA" },
+    ],
+    entries: [], youtubeUrl: null, createdAt: now,
+  });
+  put("writingContests", `genc-kalemler-${y - 1}`, {
+    slug: `genc-kalemler-${y - 1}`, name: "Genç Kalemler", edition: "1.", isCurrent: false, status: "COMPLETED", deadline: at(-320, "23:59"), minAge: 15, maxAge: 26,
+    tagline: "İlk Genç Kalemler yarışmasına 3 dilde 41 metin katıldı.", prizes: [], timeline: [], jury: [], youtubeUrl: DEMO_VIDEOS[2], createdAt: now,
+    entries: [
+      { id: "e1", title: "Sûr û Bajar", author: "Zelal Aydın", language: "KU", category: "UZUN", status: "WINNER", synopsis: "Surların içindeki eski bir evde üç kuşağın vedalaşması." },
+      { id: "e2", title: "Son Otobüs", author: "Emre Kılıç", language: "TR", category: "KISA", status: "WINNER", synopsis: "Gece yarısı son otobüsü bekleyen iki yabancı." },
+      { id: "e3", title: "Dara Vengan", author: "Rojhat Polat", language: "ZA", category: "UZUN", status: "WINNER", synopsis: "Köyün meydanındaki yaşlı ağacın dilinden bir hikâye." },
+      { id: "e4", title: "Kayıp Anahtar", author: "Elif Şahin", language: "TR", category: "COCUK", status: "MENTION", synopsis: "Bir çocuğun büyükannesinin sandığındaki gizemli anahtarı araması." },
     ],
   });
 

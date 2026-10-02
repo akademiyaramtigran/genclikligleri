@@ -4,13 +4,13 @@ import { deleteDoc, setDoc, updateDoc, where } from "firebase/firestore";
 import { createUserWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, signOut, updatePassword } from "firebase/auth";
 import { fauth, secondaryAuth } from "@/lib/firebase";
 import { getAll, getOne } from "@/lib/data";
-import { requireAdmin, requireSuper, canAccess, logActivity, uniqueId, ref, newRef, changed, batchWrite, rebuildLeague, type Unit } from "@/lib/admin";
+import { requireAdmin, requireSuper, canAccess, logActivity, uniqueId, ref, newRef, changed, batchWrite, rebuildLeague } from "@/lib/admin";
 import { deleteFile } from "@/lib/files";
 import { type ActionResult, ok, fail, str, optStr, int, bool, dt, errMessage } from "@/lib/form";
-import { APPLICATION_STATUS, SPORTS, type SportKey } from "@/lib/constants";
+import { APPLICATION_STATUS, CATEGORY_UNIT, SPORTS, type CategoryKey, type SportKey } from "@/lib/constants";
 import { slugify } from "@/lib/utils";
 import { imageField } from "./spor";
-import type { Application, League, MusicCompetition, Period, TheatreFestival, TheatreGroup } from "@/lib/types";
+import type { Application, League, MusicCompetition, Period, TheatreFestival, TheatreGroup, WritingContest } from "@/lib/types";
 
 const wrap = (fn: () => Promise<ActionResult>) => fn().catch((e) => fail(errMessage(e)));
 
@@ -20,7 +20,7 @@ async function loadApp(id: string) {
   const admin = await requireAdmin();
   const app = await getOne<Application>("applications", id);
   if (!app) throw new Error("Başvuru bulunamadı");
-  if (!canAccess(admin, app.category as Unit)) throw new Error("Bu başvuru için yetkiniz yok");
+  if (!canAccess(admin, CATEGORY_UNIT[app.category as CategoryKey])) throw new Error("Bu başvuru için yetkiniz yok");
   return { admin, app };
 }
 
@@ -95,6 +95,18 @@ export const approveApplication = (_p: ActionResult, fd: FormData) => wrap(async
     });
     resultId = cid;
     message = `"${app.title}" ${comp.name} ${comp.edition} yarışmacısı olarak eklendi.`;
+  } else if (app.category === "YAZARLIK") {
+    const contests = await getAll<WritingContest>("writingContests");
+    const contest = contests.find((c) => c.isCurrent) ?? contests[0];
+    if (!contest) return fail("Önce bir Genç Kalemler yarışması oluşturun.");
+    const author = members.map((m) => `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim()).filter(Boolean).join(", ") || app.applicantName;
+    const entry = {
+      id: crypto.randomUUID().slice(0, 8), title: app.title, author, penName: data.penName || null, language: data.language || "TR", category: data.workCategory || "KISA",
+      status: "SUBMITTED", district: app.district, synopsis: data.synopsis || null, juryNote: null, applicationId: app.id,
+    };
+    await updateDoc(ref("writingContests", contest.id), { entries: [...contest.entries, entry] });
+    resultId = contest.id;
+    message = `"${app.title}" ${contest.name} ${contest.edition} yarışmasına eser olarak eklendi.`;
   } else {
     const fests = await getAll<TheatreFestival>("theatreFestivals");
     const fest = fests.find((f) => f.isCurrent) ?? fests[0];
@@ -149,8 +161,8 @@ function parseDocs(text: string) {
 
 export const savePeriod = (_p: ActionResult, fd: FormData) => wrap(async () => {
   const category = str(fd, "category");
-  if (!["SPOR", "MUZIK", "TIYATRO"].includes(category)) return fail("Kategori seçiniz.");
-  const admin = await requireAdmin(category as Unit);
+  if (!(category in CATEGORY_UNIT)) return fail("Kategori seçiniz.");
+  const admin = await requireAdmin(CATEGORY_UNIT[category as CategoryKey]);
   const id = str(fd, "id");
   const title = str(fd, "title", 200);
   const startDate = dt(fd, "startDate"), endDate = dt(fd, "endDate");

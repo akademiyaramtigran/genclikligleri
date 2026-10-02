@@ -8,11 +8,13 @@ import { ANNOUNCEMENT_CATEGORIES } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui";
 
+import { useT } from "@/lib/i18n";
 export default function AnnouncementPage() {
   return <Suspended><Inner /></Suspended>;
 }
 
 function Inner() {
+  const t = useT();
   const slug = useParam("s") ?? "";
   const { data, error } = useData(async () => {
     const [a, all] = await Promise.all([getAnnouncement(slug), getAnnouncements()]);
@@ -21,13 +23,13 @@ function Inner() {
   useTitle(data?.a?.title);
   if (error) return <ErrorBox message={error} />;
   if (data === undefined) return <PageLoader />;
-  if (!data || !data.a.isPublished) return <NotFoundBox title="Duyuru bulunamadı" />;
+  if (!data || !data.a.isPublished) return <NotFoundBox title={t("Duyuru bulunamadı")} />;
   const { a, others } = data;
   return (
     <article>
       <header className="bg-basalt-wall text-white">
         <div className="container-x max-w-3xl py-14">
-          <Link href="/duyurular" className="text-sm text-white/60 hover:text-white">← Duyurular</Link>
+          <Link href="/duyurular" className="text-sm text-white/60 hover:text-white">{t("← Duyurular")}</Link>
           <div className="mt-4 flex gap-2"><Badge tone="dark">{ANNOUNCEMENT_CATEGORIES[a.category]}</Badge><span className="text-sm text-white/60">{formatDate(a.publishedAt)}</span></div>
           <h1 className="mt-4 text-3xl font-bold leading-tight sm:text-4xl">{a.title}</h1>
           <p className="mt-4 text-lg text-white/70">{a.excerpt}</p>
@@ -42,7 +44,7 @@ function Inner() {
           {a.content.split(/\n{2,}/).map((p, i) => <p key={i} className="whitespace-pre-line">{p}</p>)}
         </div>
         <aside>
-          <p className="eyebrow mb-3 text-basalt-500">Diğer duyurular</p>
+          <p className="eyebrow mb-3 text-basalt-500">{t("Diğer duyurular")}</p>
           <div className="space-y-3">
             {others.map((o) => (
               <Link key={o.id} href={`/duyurular/oku?s=${o.slug}`} className="block rounded-xl p-2 hover:bg-white">
