@@ -148,7 +148,7 @@ export async function seedDemo(onProgress?: (msg: string) => void) {
             jerseyNumber: n === 0 ? 1 : ri(2, 99),
             heightCm: gender === "ERKEK" ? ri(168, sport.key === "BASKETBOL" || sport.key === "VOLEYBOL" ? 205 : 192) : ri(158, sport.key === "BASKETBOL" || sport.key === "VOLEYBOL" ? 190 : 178),
             weightKg: gender === "ERKEK" ? ri(60, 92) : ri(50, 75), strongSide: pick(["Sağ", "Sağ", "Sağ", "Sol", "Her ikisi"]),
-            district: t.district, school: pick(SCHOOLS), licenseNo: `DGL-${String(playerSeq++).padStart(5, "0")}`, isCaptain: n === 1,
+            district: t.district, school: pick(SCHOOLS), licenseNo: `DGO-${String(playerSeq++).padStart(5, "0")}`, isCaptain: n === 1,
             status: rnd() < 0.05 ? "INJURED" : "ACTIVE", photoUrl: null,
             bio: `${t.district} doğumlu, takımının ${pos.toLowerCase()} pozisyonundaki önemli isimlerinden.`, createdAt: now,
           });
@@ -453,7 +453,7 @@ export async function seedDemo(onProgress?: (msg: string) => void) {
   ann.forEach(([title, category, isPinned, excerpt], i) => {
     const id = uniq(title);
     put("announcements", id, { slug: id, title, category, isPinned, excerpt, isPublished: true, coverUrl: null, publishedAt: at(-i * 3, "10:00"),
-      content: `${excerpt}\n\nDiyarbakır Gençlik Organizasyonu olarak şehrin tüm ilçelerindeki gençlerin spor, müzik ve tiyatro etkinliklerine eşit şekilde katılabilmesi için çalışmaya devam ediyoruz.\n\nAyrıntılı bilgi için başvuru sayfasını inceleyebilir ya da iletişim formu üzerinden bize ulaşabilirsiniz.` });
+      content: `${excerpt}\n\nDiyarbakır Gençlik Organizasyonları olarak şehrin tüm ilçelerindeki gençlerin spor, müzik ve tiyatro etkinliklerine eşit şekilde katılabilmesi için çalışmaya devam ediyoruz.\n\nAyrıntılı bilgi için başvuru sayfasını inceleyebilir ya da iletişim formu üzerinden bize ulaşabilirsiniz.` });
   });
   [["Sezon Açılış Töreni", DEMO_VIDEOS[0], "GENEL", true], ["Genç Sesler — Ön Eleme Özeti", DEMO_VIDEOS[1], "MUZIK", true], ["Tiyatro Festivali Tanıtım Filmi", DEMO_VIDEOS[2], "TIYATRO", false], ["Haftanın Golleri", DEMO_VIDEOS[0], "SPOR", false]]
     .forEach(([title, youtubeUrl, category, isFeatured], i) => ops.push({ ref: newRef("videos"), data: { title, youtubeUrl, category, isFeatured, publishedAt: at(-i, "09:00") } }));

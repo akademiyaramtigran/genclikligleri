@@ -2,11 +2,11 @@
 
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, FileUp, Loader2, Plus, Trash2, Upload, UserPlus, Copy } from "lucide-react";
+import { AlertCircle, Camera, Check, CheckCircle2, ChevronLeft, ChevronRight, FileUp, Loader2, Plus, Trash2, Upload, UserPlus, Copy } from "lucide-react";
 import { submitApplication, type ApplyState, type Member } from "@/actions/public";
 import { cn } from "@/lib/utils";
 import { DISTRICTS, MUSIC_GENRES, THEATRE_GENRES, SPORTS, WRITING_CATEGORIES, WRITING_CATEGORY_HINT, WRITING_LANGUAGES, type SportKey } from "@/lib/constants";
-import { MAX_DOC_MB as MAX_UPLOAD_MB } from "@/lib/files";
+import { MAX_DOC_MB as MAX_UPLOAD_MB, compressImage } from "@/lib/files";
 import type { RequiredDoc } from "@/lib/types";
 
 import { useT } from "@/lib/i18n";
@@ -239,8 +239,17 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
                 <Field label={t("Prova / Oyun Videosu")}>{<input name="videoUrl" type="url" className="input" placeholder={t("https://youtube.com/…")} />}</Field>
               </div>
               <Field label={t("Oyunun Özeti")}>{<textarea name="synopsis" rows={4} className="input" />}</Field>
-              <Field label="Teknik İhtiyaçlar (ışık, ses, dekor)">{<textarea name="techNeeds" rows={2} className="input" />}</Field>
+              <Field label={t("Teknik İhtiyaçlar (ışık, ses, dekor)")}>{<textarea name="techNeeds" rows={2} className="input" />}</Field>
             </>
+          )}
+          {!isWriting && (
+            <ImagePicker
+              name="doc_logo"
+              label={isSport ? t("Takım Logosu") : period.category === "MUZIK" ? t("Sanatçı / Grup Fotoğrafı") : t("Topluluk Logosu")}
+              hint={t("Kare, mümkünse saydam arka planlı PNG önerilir. Sitede kırpılmadan gösterilir.")}
+              round={isSport}
+              error={fe.doc_logo}
+            />
           )}
         </div>
 
@@ -253,7 +262,23 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
             {members.map((m, i) => (
               <div key={i} className="rounded-2xl border border-basalt-200 bg-basalt-50/50 p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-basalt-500">{i + 1}. {memberWord}</span>
+                  <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-basalt-500">
+                    {isSport && (
+                      <label className="relative flex h-11 w-11 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-basalt-200 text-basalt-500 ring-2 ring-white hover:ring-dicle-400" title={t("Oyuncu fotoğrafı")}>
+                        {m.photo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={m.photo} alt="" className="h-full w-full object-cover" />
+                        ) : <Camera className="h-4 w-4" />}
+                        <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label={t("Oyuncu fotoğrafı")}
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            try { setMember(i, "photo", await compressImage(f, 160, 0.75)); } catch (err) { alert(err instanceof Error ? err.message : String(err)); }
+                          }} />
+                      </label>
+                    )}
+                    {i + 1}. {memberWord}
+                  </span>
                   {members.length > 1 && (
                     <button type="button" onClick={() => setMembers((l) => l.filter((_, idx) => idx !== i))} className="rounded-lg p-1.5 text-basalt-400 hover:bg-red-50 hover:text-red-600" aria-label={t("Kişiyi sil")}><Trash2 className="h-4 w-4" /></button>
                   )}
@@ -272,7 +297,7 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
                       <input value={m.identityNo ?? ""} onChange={(e) => setMember(i, "identityNo", e.target.value.replace(/\D/g, "").slice(0, 11))} inputMode="numeric" placeholder={t("T.C. Kimlik No")} className="input" />
                     </>
                   ) : (
-                    <input value={m.role ?? ""} onChange={(e) => setMember(i, "role", e.target.value)} placeholder={period.category === "MUZIK" ? "Rol (vokal, gitar…)" : isWriting ? "Ortak yazar / tek yazar" : "Rol (oyuncu, ışık…)"} className="input" />
+                    <input value={m.role ?? ""} onChange={(e) => setMember(i, "role", e.target.value)} placeholder={t(period.category === "MUZIK" ? "Rol (vokal, gitar…)" : isWriting ? "Ortak yazar / tek yazar" : "Rol (oyuncu, ışık…)")} className="input" />
                   )}
                 </div>
               </div>
@@ -294,7 +319,7 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
         <div ref={(el) => { stepRefs.current[3] = el; }} className={cn("space-y-5", step !== 3 && "hidden")}>
           <StepTitle n={4} title={t("İstenen Belgeler")} desc={`PDF, JPG, PNG, ZIP, MP3 veya Word. Dosya başına en fazla ${MAX_UPLOAD_MB} MB.`} />
           <div className="space-y-3">
-            {docs.map((d) => (
+            {docs.filter((d) => d.key !== "logo").map((d) => (
               <label key={d.key} className={cn("flex cursor-pointer flex-col gap-3 rounded-2xl border-2 border-dashed p-4 transition sm:flex-row sm:items-center", fileNames[d.key] ? "border-emerald-300 bg-emerald-50/50" : fe[`doc_${d.key}`] ? "border-red-300 bg-red-50/50" : "border-basalt-200 hover:border-dicle-400 hover:bg-dicle-500/5")}>
                 <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", fileNames[d.key] ? "bg-emerald-500 text-white" : "bg-basalt-100 text-basalt-500")}>
                   {fileNames[d.key] ? <Check className="h-5 w-5" /> : <FileUp className="h-5 w-5" />}
@@ -323,7 +348,7 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
         <div ref={(el) => { stepRefs.current[4] = el; }} className={cn("space-y-5", step !== 4 && "hidden")}>
           <StepTitle n={5} title={t("Onay ve Gönderim")} desc="Göndermeden önce bilgilerinizi kontrol edin." />
           <div className="rounded-2xl bg-basalt-50 p-5 text-sm text-basalt-700">
-            <p><strong>{members.filter((m) => m.firstName && m.lastName).length}</strong> {memberWord.toLowerCase()} · <strong>{Object.values(fileNames).filter(Boolean).length}</strong> / {docs.length} {t("belge yüklendi")}</p>
+            <p><strong>{members.filter((m) => m.firstName && m.lastName).length}</strong> {memberWord.toLowerCase()} · <strong>{Object.values(fileNames).filter(Boolean).length}</strong> / {docs.filter((d) => d.key !== "logo").length} {t("belge yüklendi")}</p>
           </div>
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" name="rules" required className="mt-0.5 h-5 w-5 rounded border-basalt-300 accent-dicle-600" />
@@ -354,9 +379,9 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
 function stepHasErrorFor(fe: Record<string, string>, i: number) {
   const keys = Object.keys(fe);
   if (i === 0) return keys.some((k) => ["applicantName", "applicantEmail", "applicantPhone", "district"].includes(k));
-  if (i === 1) return keys.some((k) => ["title", "gender", "coachName", "genre", "playTitle", "playwright", "language", "workCategory"].includes(k));
+  if (i === 1) return keys.some((k) => ["title", "gender", "coachName", "genre", "playTitle", "playwright", "language", "workCategory", "doc_logo"].includes(k));
   if (i === 2) return !!fe.members;
-  if (i === 3) return keys.some((k) => k.startsWith("doc_"));
+  if (i === 3) return keys.some((k) => k.startsWith("doc_") && k !== "doc_logo");
   return !!fe.kvkk || !!fe.rules;
 }
 
@@ -376,6 +401,36 @@ function Field({ label, required, children }: { label: string; required?: boolea
     <div>
       <label className="label">{label} {required && <span className="text-red-500">*</span>}</label>
       {children}
+    </div>
+  );
+}
+
+/** Logo / fotoğraf seçici (önizlemeli) */
+function ImagePicker({ name, label, hint, round, error }: { name: string; label: string; hint?: string; round?: boolean; error?: string }) {
+  const t = useT();
+  const [preview, setPreview] = useState<string | null>(null);
+  return (
+    <div>
+      <label className="label">{label}</label>
+      <label className={cn("flex cursor-pointer items-center gap-4 rounded-2xl border-2 border-dashed p-4 transition", error ? "border-red-300 bg-red-50/50" : preview ? "border-emerald-300 bg-emerald-50/40" : "border-basalt-200 hover:border-dicle-400")}>
+        <span className={cn("flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden bg-white ring-1 ring-basalt-200", round ? "rounded-full p-1.5" : "rounded-xl")}>
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={preview} alt="" className={cn("h-full w-full", round ? "object-contain" : "object-cover")} />
+          ) : <Upload className="h-5 w-5 text-basalt-400" />}
+        </span>
+        <span className="min-w-0 flex-1 text-sm">
+          <span className="block font-medium text-basalt-900">{preview ? t("Değiştir") : t("Görsel seç (isteğe bağlı)")}</span>
+          {hint && <span className="block text-xs text-basalt-500">{hint}</span>}
+          {error && <span className="mt-1 flex items-center gap-1 text-xs font-medium text-red-600"><AlertCircle className="h-3.5 w-3.5" /> {error}</span>}
+        </span>
+        <input type="file" name={name} accept="image/png,image/jpeg,image/webp" className="sr-only"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (preview) URL.revokeObjectURL(preview);
+            setPreview(f ? URL.createObjectURL(f) : null);
+          }} />
+      </label>
     </div>
   );
 }

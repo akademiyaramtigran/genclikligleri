@@ -20,7 +20,7 @@ export default function AboutPage() {
   ] as const;
   return (
     <>
-      <PageHero eyebrow={t("Organizasyon")} title={t("Hakkımızda")} description="Diyarbakır Gençlik Organizasyonu; şehrin gençlerini spor, müzik ve tiyatro etrafında bir araya getiren, tek merkezden yönetilen şehir çapında bir gençlik platformudur." />
+      <PageHero eyebrow={t("Organizasyon")} title={t("Hakkımızda")} description="Diyarbakır Gençlik Organizasyonları; şehrin gençlerini spor, müzik ve tiyatro etrafında bir araya getiren, tek merkezden yönetilen şehir çapında bir gençlik platformudur." />
       <div className="container-x space-y-12 py-12">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatTile label={t("Takım")} value={teams} /><StatTile label={t("Sporcu")} value={players} /><StatTile label={t("Müzisyen / Grup")} value={contestants} /><StatTile label={t("Tiyatro Topluluğu")} value={groups} />

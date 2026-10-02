@@ -21,7 +21,7 @@ function GroupFields({ g }: { g?: TheatreGroup }) {
       <TextField label="Topluluk Adı" name="name" required defaultValue={g?.name} />
       <FormGrid cols={3}><SelectField label="İlçe" name="district" required defaultValue={g?.district} empty="Seçiniz" options={DISTRICTS.map((d) => ({ value: d, label: d }))} /><TextField label="Kuruluş" name="foundedYear" type="number" defaultValue={g?.foundedYear} /><TextField label="Üye Sayısı" name="memberCount" type="number" defaultValue={g?.memberCount} /></FormGrid>
       <FormGrid><TextField label="Sanat Yönetmeni" name="director" defaultValue={g?.director} /><TextField label="Instagram" name="instagram" defaultValue={g?.instagram} /></FormGrid>
-      <FileField label="Logo" name="logo" current={g?.logoUrl} />
+      <FileField label="Topluluk Logosu" name="logo" current={g?.logoUrl} accept="image/png,image/jpeg,image/webp" hint="Kare, mümkünse saydam arka planlı PNG önerilir." />
       <TextArea label="Tanıtım" name="description" rows={2} defaultValue={g?.description} />
     </div>
   );

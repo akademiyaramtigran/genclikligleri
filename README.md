@@ -1,4 +1,4 @@
-# Diyarbakır Gençlik Ligleri 🏆🎤🎭
+# Diyarbakır Gençlik Organizasyonları 🏆🎤🎭
 
 Diyarbakır'ın 17 ilçesindeki gençlik organizasyonunu **tek bir platformda** yöneten web sitesi:
 

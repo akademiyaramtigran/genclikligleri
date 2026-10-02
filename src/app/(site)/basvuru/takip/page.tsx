@@ -37,7 +37,7 @@ function Inner() {
       <PageHero eyebrow={t("Başvurular")} title={t("Başvuru Takip")} description={t("Başvuru sırasında verilen takip kodu ve e-posta adresiyle başvurunuzun durumunu sorgulayın.")} />
       <div className="container-x max-w-3xl py-10">
         <form className="card grid gap-4 p-6 sm:grid-cols-[1fr_1fr_auto] sm:items-end" action={withBase("/basvuru/takip/")}>
-          <div><label className="label" htmlFor="kod">{t("Takip Kodu")}</label><input id="kod" name="kod" defaultValue={sp.kod} required placeholder={t("DGLXXXXX")} className="input font-mono uppercase tracking-widest" /></div>
+          <div><label className="label" htmlFor="kod">{t("Takip Kodu")}</label><input id="kod" name="kod" defaultValue={sp.kod} required placeholder={"DGOXXXXX"} className="input font-mono uppercase tracking-widest" /></div>
           <div><label className="label" htmlFor="eposta">{t("E-posta")}</label><input id="eposta" name="eposta" type="email" defaultValue={sp.eposta} required className="input" /></div>
           <button className="btn-primary"><Search className="h-4 w-4" /> {t("Sorgula")}</button>
         </form>

@@ -7,6 +7,9 @@ export const DICT: Record<string, [string, string]> = {
   "Müzik": ["Muzîk", "Muzîk"],
   "Tiyatro": ["Şano", "Şano"],
   "Diyarbakır": ["Amed", "Amed"],
+  "Gençlik Organizasyonları": ["Rêxistinên Ciwanan", "Organîzasyonê Ciwanan"],
+  "K": ["J", "Cn"],
+  "E": ["M", "Cm"],
   "Gençlik Ligleri": ["Lîgên Ciwanan", "Lîgê Ciwanan"],
   "Lig Merkezi": ["Navenda Lîgê", "Merkezê Lîgî"],
   "Lig Merkezi · 2026-2027": ["Navenda Lîgê · 2026-2027", "Merkezê Lîgî · 2026-2027"],
@@ -500,6 +503,18 @@ export const DICT: Record<string, [string, string]> = {
   "ile bize ulaşın.": ["bi me re têkilî daynin.", "ra ma reseyê."],
   "Başvuru sırasında verilen takip kodu ve e-posta adresiyle başvurunuzun durumunu sorgulayın.": ["Bi koda şopandinê ya ku di dema serlêdanê de hatiye dayîn û navnîşana e-nameyê rewşa serlêdana xwe bipirsin.", "Bı kodê taqîbî yo ke wextê muracaetî de dîyayo û adresê e-posteyî rewşa muracaetê xo bıpersê."],
   "Başvuru dönemleri": ["Demên serlêdanê", "Demê muracaetî"],
+
+  "Takım Logosu": ["Logoya Tîmê", "Logoyê Tîme"],
+  "Sanatçı / Grup Fotoğrafı": ["Wêneyê Hunermend / Komê", "Fotografê Hunermend / Grubî"],
+  "Topluluk Logosu": ["Logoya Civatê", "Logoyê Komeleyî"],
+  "Kare, mümkünse saydam arka planlı PNG önerilir. Sitede kırpılmadan gösterilir.": ["PNGya çargoşe û heke gengaz be bi paşxaneya şefaf tê pêşniyarkirin. Li malperê bê birîn tê nîşandan.", "PNG-ya çarkoşe û eke beno bı peyrûyo şefaf tewsîye beno. Sîte de bê bırnayîş aseno."],
+  "Oyuncu fotoğrafı": ["Wêneyê lîstikvan", "Fotografê kaykerdoxî"],
+  "Değiştir": ["Biguherîne", "Bıvurne"],
+  "Görsel seç (isteğe bağlı)": ["Wêneyekî hilbijêre (ne mecbûrî)", "Resımêk weçîne (mecbûrî nîyo)"],
+  "Rol (vokal, gitar…)": ["Rol (vokal, gîtar…)", "Rol (vokal, gîtar…)"],
+  "Ortak yazar / tek yazar": ["Nivîskarê hevpar / nivîskarê yekane", "Nuştoxo hevpar / nuştoxo tek"],
+  "Rol (oyuncu, ışık…)": ["Rol (lîstikvan, ronahî…)", "Rol (kaykerdox, roşnî…)"],
+  "Teknik İhtiyaçlar (ışık, ses, dekor)": ["Pêdiviyên Teknîkî (ronahî, deng, dekor)", "Hewcedarîyê Teknîkî (roşnî, veng, dekor)"],
 
   // ───── Duyuru / video / tesis / iletişim / arama ─────
   "Organizasyondan son haberler, başvuru duyuruları ve etkinlik bilgileri.": ["Nûçeyên dawî yên rêxistinê, daxuyaniyên serlêdanê û agahiyên çalakiyan.", "Xeberê peyênê organîzasyonî, beyanê muracaetî û melumatê aktîvîteyan."],

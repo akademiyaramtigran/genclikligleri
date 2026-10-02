@@ -44,7 +44,7 @@ export function PlayerForm({ player, teamId }: { player?: Player; teamId?: strin
           <TextField label="Lisans No" name="licenseNo" defaultValue={player?.licenseNo} />
           <TextField label="T.C. Kimlik No" name="identityNo" maxLength={11} pattern="\d{11}" defaultValue={priv?.identityNo} hint="Gizli — sitede gösterilmez." />
         </FormGrid>
-        <FileField label="Fotoğraf" name="photo" current={player?.photoUrl} />
+        <FileField label="Oyuncu Fotoğrafı" name="photo" current={player?.photoUrl} accept="image/png,image/jpeg,image/webp" hint="Vesikalık / yüz odaklı fotoğraf önerilir. Otomatik küçültülür." />
         <TextArea label="Biyografi" name="bio" rows={3} defaultValue={player?.bio} />
         <CheckField label="Takım kaptanı" name="isCaptain" defaultChecked={player?.isCaptain} />
       </div>

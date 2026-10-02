@@ -185,7 +185,7 @@ export const saveTeam = (_p: ActionResult, fd: FormData) => wrap(async () => {
   const name = str(fd, "name", 120), sport = str(fd, "sport"), gender = str(fd, "gender"), district = str(fd, "district", 50);
   if (!name || !(sport in SPORTS) || !["ERKEK", "KADIN"].includes(gender) || !district) return fail("Ad, branş, kategori ve ilçe zorunludur.");
   const current = id ? await getOne<Team>("teams", id) : null;
-  const logoUrl = await imageField(fd, "logo", current?.logoUrl, 128);
+  const logoUrl = await imageField(fd, "logo", current?.logoUrl, 192);
   const venueId = optStr(fd, "venueId");
   const venue = venueId ? await getOne<Venue>("venues", venueId) : null;
   const data = {

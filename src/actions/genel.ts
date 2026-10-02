@@ -72,7 +72,7 @@ export const approveApplication = (_p: ActionResult, fd: FormData) => wrap(async
       let pid = slugify(`${m.firstName} ${m.lastName}`) || "oyuncu";
       if (used.has(pid) || (await getOne("players", pid))) { let i = 2; while (used.has(`${pid}-${i}`) || (await getOne("players", `${pid}-${i}`))) i++; pid = `${pid}-${i}`; }
       used.add(pid);
-      ops.push({ ref: ref("players", pid), data: { slug: pid, firstName: m.firstName ?? "", lastName: m.lastName ?? "", gender, sport, teamId: tid, district: app.district, birthDate: m.birthDate || null, position: m.position || null, jerseyNumber: m.jerseyNumber ? Number(m.jerseyNumber) || null : null, isCaptain: false, status: "ACTIVE", createdAt: new Date() } });
+      ops.push({ ref: ref("players", pid), data: { slug: pid, firstName: m.firstName ?? "", lastName: m.lastName ?? "", photoUrl: m.photo || null, gender, sport, teamId: tid, district: app.district, birthDate: m.birthDate || null, position: m.position || null, jerseyNumber: m.jerseyNumber ? Number(m.jerseyNumber) || null : null, isCaptain: false, status: "ACTIVE", createdAt: new Date() } });
       if (/^\d{11}$/.test(m.identityNo ?? "")) ops.push({ ref: ref("playerPrivate", pid), data: { identityNo: m.identityNo } });
     }
     await batchWrite(ops);
@@ -90,7 +90,7 @@ export const approveApplication = (_p: ActionResult, fd: FormData) => wrap(async
     await setDoc(ref("musicContestants", cid), {
       slug: cid, competitionId: comp.id, name: app.title, type: data.type || "SOLO", genre: data.genre || "Pop", district: app.district, bio: data.bio || null,
       instagram: data.instagram ? (data.instagram.startsWith("http") ? data.instagram : `https://instagram.com/${data.instagram.replace(/^@/, "")}`) : null,
-      youtubeUrl: data.demoUrl || null, status: "ACTIVE", photoUrl: null,
+      youtubeUrl: data.demoUrl || null, status: "ACTIVE", photoUrl: data.logoUrl || null,
       members: members.map((m) => ({ name: `${m.firstName} ${m.lastName}`.trim(), role: m.role ?? "" })), createdAt: new Date(),
     });
     resultId = cid;
@@ -115,7 +115,7 @@ export const approveApplication = (_p: ActionResult, fd: FormData) => wrap(async
     let gid = groups[0]?.id;
     if (!gid) {
       gid = await uniqueId("theatreGroups", app.title);
-      await setDoc(ref("theatreGroups", gid), { slug: gid, name: app.title, district: app.district, director: data.director || app.applicantName, memberCount: members.length || null });
+      await setDoc(ref("theatreGroups", gid), { slug: gid, name: app.title, district: app.district, director: data.director || app.applicantName, memberCount: members.length || null, logoUrl: data.logoUrl || null });
     }
     const title = data.playTitle || app.title;
     const pid = await uniqueId("theatrePlays", title);

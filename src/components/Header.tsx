@@ -86,7 +86,7 @@ export function Header() {
           {brand ? brand.mark : <Logo />}
           <span className="hidden leading-none sm:block">
             <span className={cn("block text-lg uppercase tracking-wider", section === "tiyatro" ? "font-stage tracking-wide" : section === "muzik" ? "font-music text-base font-bold" : "font-display font-semibold")}>{brand ? t(brand.top) : "Diyarbakır"}</span>
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.25em] text-white/50">{brand ? t(brand.bottom) : t("Gençlik Ligleri")}</span>
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.25em] text-white/50">{brand ? t(brand.bottom) : t("Gençlik Organizasyonları")}</span>
           </span>
         </Link>
 

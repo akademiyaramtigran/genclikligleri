@@ -1,7 +1,7 @@
 export const SITE = {
-  name: "Diyarbakır Gençlik Ligleri",
-  shortName: "DGL",
-  org: "Diyarbakır Gençlik Organizasyonu",
+  name: "Diyarbakır Gençlik Organizasyonları",
+  shortName: "DGO",
+  org: "Diyarbakır Gençlik Organizasyonları",
   slogan: "Şehrin gençliği tek sahada: Spor, Müzik, Tiyatro",
   email: "iletisim@diyarbakirgenclik.org",
   phone: "0 (412) 000 00 00",

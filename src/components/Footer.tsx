@@ -39,8 +39,8 @@ export function Footer() {
           <Link href="/" className="flex items-center gap-3">
             <Logo size={44} />
             <span>
-              <span className="block font-display text-xl font-semibold uppercase tracking-wider">{SITE.name}</span>
-              <span className="block text-xs text-white/50">{SITE.org}</span>
+              <span className="block font-display text-xl font-semibold uppercase tracking-wider">Diyarbakır</span>
+              <span className="block text-xs uppercase tracking-[0.2em] text-white/50">{t("Gençlik Organizasyonları")}</span>
             </span>
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/60">

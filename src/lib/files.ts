@@ -27,8 +27,10 @@ export async function compressImage(file: File, maxSide = 512, quality = 0.82): 
   canvas.height = h;
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(bitmap, 0, 0, w, h);
-  // Saydam logolar için PNG, fotoğraflar için JPEG
-  const png = file.type === "image/png" || file.type === "image/svg+xml";
+  // WebP hem saydamlığı korur hem küçüktür; desteklemeyen tarayıcıda saydam logolar PNG, fotoğraflar JPEG
+  const webp = canvas.toDataURL("image/webp", quality);
+  if (webp.startsWith("data:image/webp")) return webp;
+  const png = file.type === "image/png" || file.type === "image/svg+xml" || file.type === "image/webp";
   return canvas.toDataURL(png ? "image/png" : "image/jpeg", quality);
 }
 

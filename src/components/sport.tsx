@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { MapPin, PlayCircle } from "lucide-react";
 import type { LeaderRow, Match, StandingRow } from "@/lib/types";
-import { sportDef, MATCH_STATUS } from "@/lib/constants";
+import { sportDef, MATCH_STATUS, SPORTS } from "@/lib/constants";
+import { getSeasonMatches } from "@/lib/data";
+import { useData } from "@/lib/hooks";
+import { firebaseReady } from "@/lib/firebase";
 import { cn, formatShortDate, formatTime, formatWeekday } from "@/lib/utils";
 import { Avatar, Badge, FormBadge, TeamCrest } from "./ui";
 import { useT } from "@/lib/i18n";
@@ -214,6 +217,37 @@ export function GenderSwitch({ active, hrefFor, dark = true }: { active: "ERKEK"
           {t(it.label)}
         </Link>
       ))}
+    </div>
+  );
+}
+
+/** Canlı / son skor bandı — yalnızca spor alanında (spor düzeninde) gösterilir */
+export function ScoreTicker() {
+  const t = useT();
+  const { data } = useData(() => (firebaseReady ? getSeasonMatches() : Promise.resolve([])), []);
+  const live = (data ?? []).filter((m) => m.status === "LIVE");
+  const recent = (data ?? []).filter((m) => m.status === "FINISHED").sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 16);
+  const items = [...live, ...recent];
+  if (items.length === 0) return null;
+  const row = (m: Match, i: number) => (
+    <Link key={`${m.id}-${i}`} href={`/spor/mac?id=${m.id}`} className="flex items-center gap-2 whitespace-nowrap text-sm text-white/80 hover:text-white">
+      {m.status === "LIVE" && <span className="flex items-center gap-1 rounded bg-red-600 px-1.5 text-[10px] font-bold uppercase text-white"><span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-white" />{t("Canlı")}</span>}
+      <span className="text-xs">{SPORTS[m.sport as keyof typeof SPORTS]?.emoji}</span>
+      <span className={cn("rounded px-1.5 text-[10px] font-bold", m.gender === "KADIN" ? "bg-rose-500/20 text-rose-300" : "bg-sky-500/20 text-sky-300")}>{m.gender === "KADIN" ? t("K") : t("E")}</span>
+      <TeamCrest team={m.home} size={18} className="!ring-0" />
+      <span>{m.home.shortName}</span>
+      <span className={cn("rounded px-2 font-display font-bold tabular-nums", m.status === "LIVE" ? "bg-red-600/80" : "bg-white/10")}>{m.homeScore ?? 0}-{m.awayScore ?? 0}</span>
+      <span>{m.away.shortName}</span>
+      <TeamCrest team={m.away} size={18} className="!ring-0" />
+    </Link>
+  );
+  return (
+    <div className="border-b border-white/10 bg-basalt-950 text-white">
+      <div className="mask-fade-x overflow-hidden py-2.5">
+        <div className="flex w-max animate-marquee gap-8 hover:[animation-play-state:paused]">
+          {[...items, ...items].map(row)}
+        </div>
+      </div>
     </div>
   );
 }

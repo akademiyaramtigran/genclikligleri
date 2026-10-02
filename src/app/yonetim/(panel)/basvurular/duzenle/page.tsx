@@ -77,6 +77,9 @@ function Inner() {
                 LABELS[k] ?? k,
                 k === "sport" ? SPORTS[v as SportKey]?.label ?? v : k === "gender" ? (v === "KADIN" ? "Kadınlar" : "Erkekler") : app.category === "YAZARLIK" && k === "language" ? WRITING_LANGUAGES[v] ?? v : k === "workCategory" ? WRITING_CATEGORIES[v] ?? v : k.endsWith("Color") ? <span key={k} className="inline-flex items-center gap-2"><span className="h-4 w-4 rounded-full ring-1 ring-basalt-200" style={{ background: v }} />{v}</span> : /^https?:/.test(v) ? <a key={k} href={v} target="_blank" rel="noreferrer" className="link inline-flex items-center gap-1">Aç <ExternalLink className="h-3 w-3" /></a> : v,
               ] as [string, React.ReactNode])} />
+              {appData.logoUrl && /^data:image\//.test(appData.logoUrl) && (
+                <div className="mt-3 flex items-center gap-3 rounded-lg bg-basalt-50 p-3 text-sm"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white p-1 ring-1 ring-basalt-200">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={appData.logoUrl} alt="" className="h-full w-full object-contain" /></span><span className="text-xs font-semibold text-basalt-500">{app.category === "MUZIK" ? "Fotoğraf" : "Logo"} — onaylanınca kayda aktarılır</span></div>
+              )}
               {["bio", "note", "synopsis", "techNeeds"].filter((k) => appData[k]).map((k) => (
                 <div key={k} className="mt-3 rounded-lg bg-basalt-50 p-3 text-sm"><p className="text-xs font-semibold text-basalt-500">{LABELS[k]}</p><p className="whitespace-pre-line">{appData[k]}</p></div>
               ))}
@@ -91,7 +94,10 @@ function Inner() {
                   {members.map((m, i) => (
                     <tr key={i} className={outOfAge(m) ? "bg-red-50" : ""}>
                       <td className="text-basalt-400">{i + 1}</td>
-                      <td className="font-medium">{m.firstName} {m.lastName}</td>
+                      <td className="font-medium"><span className="flex items-center gap-2">{m.photo && /^data:image\//.test(m.photo) && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={m.photo} alt="" className="h-8 w-8 rounded-full object-cover" />
+                      )}{m.firstName} {m.lastName}</span></td>
                       <td>{m.birthDate ? `${m.birthDate} (${age(m.birthDate)})` : "—"}</td>
                       {isSport ? <><td>{m.position || "—"}</td><td>{m.jerseyNumber || "—"}</td><td className="font-mono text-xs">{m.identityNo || "—"}</td></> : <td>{m.role || "—"}</td>}
                     </tr>

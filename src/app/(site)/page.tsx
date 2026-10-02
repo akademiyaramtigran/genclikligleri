@@ -134,24 +134,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Son skorlar bandı */}
-        {recent.length > 0 && (
-          <div className="relative border-t border-white/10 bg-black/30">
-            <div className="mask-fade-x overflow-hidden py-3">
-              <div className="flex w-max animate-marquee gap-8 hover:[animation-play-state:paused]">
-                {[...recent, ...recent].map((m, i) => (
-                  <Link key={`${m.id}-${i}`} href={`/spor/mac?id=${m.id}`} className="flex items-center gap-2 whitespace-nowrap text-sm text-white/80 hover:text-white">
-                    <span className="text-xs">{SPORTS[m.sport as keyof typeof SPORTS]?.emoji}</span>
-                    <span className={cn("rounded px-1.5 text-[10px] font-bold", m.gender === "KADIN" ? "bg-rose-500/20 text-rose-300" : "bg-sky-500/20 text-sky-300")}>{m.gender === "KADIN" ? "K" : "E"}</span>
-                    <span>{m.home.shortName}</span>
-                    <span className="rounded bg-white/10 px-2 font-display font-bold tabular-nums">{m.homeScore}-{m.awayScore}</span>
-                    <span>{m.away.shortName}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </section>
 
       {/* ───────────── AÇIK BAŞVURU ───────────── */}
