@@ -1,18 +1,22 @@
-import type { Metadata } from "next";
-import { db } from "@/lib/db";
-import { requireSuperAdmin } from "@/lib/auth";
+"use client";
+
+import { getLogs } from "@/lib/admin-data";
+import { useData } from "@/lib/hooks";
+import { RequireUnit } from "../../AdminContext";
+import { ErrorBox, PageLoader } from "@/components/client";
 import { formatDateTime } from "@/lib/utils";
 import { Badge } from "@/components/ui";
 import { AdminHeader } from "@/components/admin/fields";
-import { Pagination } from "@/components/FilterBar";
 
-export const metadata: Metadata = { title: "İşlem Kayıtları" };
-const PER = 50;
 
-export default async function LogsAdmin({ searchParams }: { searchParams: Promise<{ sayfa?: string }> }) {
-  await requireSuperAdmin();
-  const page = Math.max(1, Number((await searchParams).sayfa) || 1);
-  const [total, logs] = await Promise.all([db.activityLog.count(), db.activityLog.findMany({ orderBy: { createdAt: "desc" }, skip: (page - 1) * PER, take: PER, include: { user: true } })]);
+export default function LogsAdmin() {
+  return <RequireUnit superOnly><Inner /></RequireUnit>;
+}
+
+function Inner() {
+  const { data: logs, error } = useData(() => getLogs(200), []);
+  if (error) return <ErrorBox message={error} />;
+  if (!logs) return <PageLoader />;
   return (
     <>
       <AdminHeader title="İşlem Kayıtları" description="Yönetim panelinde yapılan tüm önemli işlemler." />
@@ -23,7 +27,7 @@ export default async function LogsAdmin({ searchParams }: { searchParams: Promis
             {logs.map((l) => (
               <tr key={l.id}>
                 <td className="text-xs text-basalt-500">{formatDateTime(l.createdAt)}</td>
-                <td className="text-sm">{l.user?.name ?? "Sistem"}</td>
+                <td className="text-sm">{l.userName ?? "Sistem"}</td>
                 <td><Badge tone={l.action === "SIL" ? "red" : l.action === "ONAY" ? "green" : "slate"}>{l.action}</Badge></td>
                 <td className="text-sm">{l.entity}</td>
                 <td className="max-w-md truncate text-xs text-basalt-600">{l.details}</td>
@@ -32,7 +36,7 @@ export default async function LogsAdmin({ searchParams }: { searchParams: Promis
           </tbody>
         </table>
       </div>
-      <Pagination page={page} total={total} perPage={PER} basePath="/yonetim/kayitlar" params={{}} />
+      
     </>
   );
 }

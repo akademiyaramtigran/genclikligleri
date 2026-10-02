@@ -8,11 +8,7 @@ const oswald = Oswald({ subsets: ["latin", "latin-ext"], variable: "--font-oswal
 const playfair = Playfair_Display({ subsets: ["latin", "latin-ext"], variable: "--font-playfair", display: "swap" });
 const unbounded = Unbounded({ subsets: ["latin", "latin-ext"], variable: "--font-unbounded", display: "swap" });
 
-// Tüm sayfalar canlı veriden üretilir
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: { default: `${SITE.name} — Spor · Müzik · Tiyatro`, template: `%s | ${SITE.name}` },
   description: "Diyarbakır gençlik ligleri: futbol, basketbol, voleybol, hentbol erkek ve kadın ligleri; puan durumu, fikstür, oyuncu istatistikleri, Genç Sesler müzik yarışması ve Gençlik Tiyatro Festivali.",
   keywords: ["Diyarbakır", "gençlik ligi", "amatör lig", "futbol", "basketbol", "voleybol", "hentbol", "kadın ligi", "müzik yarışması", "tiyatro festivali"],

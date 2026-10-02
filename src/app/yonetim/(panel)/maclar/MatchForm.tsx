@@ -1,29 +1,39 @@
-import type { Match } from "@prisma/client";
-import { db } from "@/lib/db";
+"use client";
+
+import { useRouter } from "next/navigation";
+import type { Match, Player } from "@/lib/types";
+import { getLeague, getLeagues, getTeamPlayers, getTeams, getVenues } from "@/lib/data";
+import { useData } from "@/lib/hooks";
 import { MATCH_STATUS, sportDef } from "@/lib/constants";
 import { toDateTimeLocal } from "@/lib/utils";
 import { AdminForm } from "@/components/admin/AdminForm";
 import { FormGrid, SelectField, TextArea, TextField } from "@/components/admin/fields";
 import { saveMatch } from "@/actions/spor";
 
-export async function MatchForm({ match, leagueId }: { match?: Match; leagueId?: string }) {
+export function MatchForm({ match, leagueId }: { match?: Match; leagueId?: string }) {
+  const router = useRouter();
   const lid = match?.leagueId ?? leagueId;
-  const [leagues, venues, league] = await Promise.all([
-    db.league.findMany({ include: { season: true }, orderBy: [{ season: { startDate: "desc" } }, { name: "asc" }] }),
-    db.venue.findMany({ orderBy: { name: "asc" } }),
-    lid ? db.league.findUnique({ where: { id: lid }, include: { entries: { include: { team: { include: { players: { orderBy: { lastName: "asc" } } } } } } } }) : null,
-  ]);
+  const { data } = useData(async () => {
+    const [leagues, venues, league, allTeams] = await Promise.all([getLeagues(), getVenues(), lid ? getLeague(lid) : null, getTeams()]);
+    const leagueTeams = league ? allTeams.filter((t) => league.entries.some((e) => e.teamId === t.id)) : [];
+    const squads: { teamShort: string; players: Player[] }[] = match
+      ? await Promise.all([match.homeTeamId, match.awayTeamId].map(async (tid) => ({ teamShort: allTeams.find((t) => t.id === tid)?.shortName ?? "", players: await getTeamPlayers(tid) })))
+      : [];
+    return { leagues, venues, league, leagueTeams, squads };
+  }, [lid, match?.id]);
+  if (!data) return null;
+  const { leagues, venues, league } = data;
   if (!league) {
     return (
-      <form className="flex flex-wrap items-end gap-3">
-        <SelectField label="Önce lig seçin" name="lig" options={leagues.map((l) => ({ value: l.id, label: `${l.name} (${l.season.name})` }))} className="min-w-[18rem]" />
+      <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); const v = new FormData(e.currentTarget).get("lig"); if (v) router.push(`/yonetim/maclar/yeni?lig=${v}`); }}>
+        <SelectField label="Önce lig seçin" name="lig" options={leagues.map((l) => ({ value: l.id, label: `${l.name} (${l.seasonName})` }))} className="min-w-[18rem]" />
         <button className="btn-primary">Devam</button>
       </form>
     );
   }
   const def = sportDef(league.sport);
-  const teams = league.entries.map((e) => e.team).sort((a, b) => a.name.localeCompare(b.name, "tr"));
-  const players = teams.filter((t) => !match || t.id === match.homeTeamId || t.id === match.awayTeamId).flatMap((t) => t.players.map((p) => ({ value: p.id, label: `${p.firstName} ${p.lastName} (${t.shortName})` })));
+  const teams = data.leagueTeams;
+  const players = data.squads.flatMap((sq) => sq.players.map((p) => ({ value: p.id, label: `${p.firstName} ${p.lastName} (${sq.teamShort})` })));
   return (
     <AdminForm action={saveMatch} submitLabel={match ? "Maçı Kaydet" : "Maçı Oluştur"}>
       {match && <input type="hidden" name="id" value={match.id} />}

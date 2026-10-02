@@ -1,9 +1,12 @@
+"use client";
+
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 type Base = { label: string; name: string; required?: boolean; hint?: string; className?: string };
 
-export function TextField({ label, name, required, hint, className, defaultValue, type = "text", placeholder, ...rest }: Base & { defaultValue?: string | number | null; type?: string; placeholder?: string; min?: number | string; max?: number | string; step?: number | string; maxLength?: number; pattern?: string; autoComplete?: string }) {
+export function TextField({ label, name, required, hint, className, defaultValue, type = "text", placeholder, ...rest }: Base & { defaultValue?: string | number | null; type?: string; placeholder?: string; min?: number | string; max?: number | string; step?: number | string; maxLength?: number; pattern?: string; autoComplete?: string; readOnly?: boolean }) {
   return (
     <div className={className}>
       <label className="label" htmlFor={name}>{label}{required && <span className="text-red-500"> *</span>}</label>
@@ -58,7 +61,7 @@ export function FileField({ label, name, hint, current, className, accept = "ima
         <input id={name} name={name} type="file" accept={accept} className="block w-full text-sm text-basalt-600 file:mr-3 file:rounded-lg file:border-0 file:bg-basalt-100 file:px-3 file:py-2 file:text-sm file:font-semibold hover:file:bg-basalt-200" />
       </div>
       {current && <label className="mt-1 flex items-center gap-2 text-xs text-basalt-500"><input type="checkbox" name={`${name}_remove`} /> Mevcut görseli kaldır</label>}
-      {hint && <p className="hint">{hint}</p>}
+      <p className="hint">{hint ?? "Görsel otomatik olarak küçültülüp sıkıştırılır."}</p>
     </div>
   );
 }
@@ -88,7 +91,7 @@ export function AdminHeader({ title, description, actions, back }: { title: Reac
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        {back && <a href={back.href} className="text-sm text-basalt-500 hover:text-basalt-900">← {back.label}</a>}
+        {back && <Link href={back.href} className="text-sm text-basalt-500 hover:text-basalt-900">← {back.label}</Link>}
         <h1 className="mt-1 text-2xl font-bold text-basalt-900">{title}</h1>
         {description && <p className="mt-1 text-sm text-basalt-500">{description}</p>}
       </div>

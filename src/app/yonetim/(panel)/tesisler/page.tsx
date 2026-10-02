@@ -1,15 +1,16 @@
-import type { Metadata } from "next";
+"use client";
+
 import { Trash2 } from "lucide-react";
-import type { Venue } from "@prisma/client";
-import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import type { Venue } from "@/lib/types";
+import { getVenues } from "@/lib/data";
+import { useData } from "@/lib/hooks";
+import { ErrorBox, PageLoader } from "@/components/client";
 import { DISTRICTS, VENUE_TYPES } from "@/lib/constants";
 import { Badge } from "@/components/ui";
 import { AdminHeader, FormGrid, Panel, SelectField, TextArea, TextField } from "@/components/admin/fields";
 import { AdminForm, ActionButton } from "@/components/admin/AdminForm";
 import { deleteVenue, saveVenue } from "@/actions/spor";
 
-export const metadata: Metadata = { title: "Tesisler" };
 
 function VenueFields({ v }: { v?: Venue }) {
   return (
@@ -28,9 +29,10 @@ function VenueFields({ v }: { v?: Venue }) {
   );
 }
 
-export default async function VenuesAdmin() {
-  await requireUser();
-  const venues = await db.venue.findMany({ orderBy: [{ type: "asc" }, { name: "asc" }], include: { _count: { select: { matches: true, theatreShows: true, musicRounds: true } } } });
+export default function VenuesAdmin() {
+  const { data: venues, error } = useData(getVenues, []);
+  if (error) return <ErrorBox message={error} />;
+  if (!venues) return <PageLoader />;
   return (
     <>
       <AdminHeader title="Tesisler & Sahneler" description="Maç, konser ve gösterimlerin yapıldığı mekânlar." />
@@ -40,10 +42,10 @@ export default async function VenuesAdmin() {
             <details key={v.id} className="card group">
               <summary className="flex cursor-pointer list-none items-center gap-3 p-4">
                 <span className="flex-1"><span className="block font-semibold">{v.name}</span><span className="text-xs text-basalt-500">{VENUE_TYPES[v.type]} · {v.district}{v.capacity ? ` · ${v.capacity} kişi` : ""}</span></span>
-                <Badge>{v._count.matches + v._count.theatreShows + v._count.musicRounds} etkinlik</Badge>
+                <Badge>{v.district}</Badge>
               </summary>
               <div className="border-t border-basalt-100 p-4">
-                <AdminForm action={saveVenue} compact><VenueFields v={v} /></AdminForm>
+                <AdminForm key={v.id} action={saveVenue} compact><VenueFields v={v} /></AdminForm>
                 <div className="mt-3"><ActionButton action={deleteVenue} fields={{ id: v.id }} label="Tesisi Sil" icon={<Trash2 className="h-3.5 w-3.5" />} confirm="Tesis silinsin mi? Bağlı maçlarda tesis bilgisi boşalır." className="btn-ghost btn-sm text-red-600" /></div>
               </div>
             </details>

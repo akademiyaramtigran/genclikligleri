@@ -1,10 +1,16 @@
-import { requireUser } from "@/lib/auth";
+"use client";
+
 import { AdminHeader, Panel } from "@/components/admin/fields";
+import { Suspended, useParam } from "@/components/client";
+import { RequireUnit } from "../../../AdminContext";
 import { TeamForm } from "../TeamForm";
 
-export default async function NewTeam({ searchParams }: { searchParams: Promise<{ lig?: string }> }) {
-  await requireUser("SPOR");
-  const { lig } = await searchParams;
+export default function NewTeam() {
+  return <RequireUnit unit="SPOR"><Suspended><Inner /></Suspended></RequireUnit>;
+}
+
+function Inner() {
+  const lig = useParam("lig");
   return (
     <>
       <AdminHeader back={{ href: "/yonetim/takimlar", label: "Takımlar" }} title="Yeni Takım" />

@@ -1,8 +1,8 @@
 import { fromDateTimeLocal } from "./utils";
 
-export type ActionResult = { ok: boolean; message: string } | null;
+export type ActionResult = { ok: boolean; message: string; redirect?: string } | null;
 
-export const ok = (message = "Kaydedildi."): ActionResult => ({ ok: true, message });
+export const ok = (message = "Kaydedildi.", redirect?: string): ActionResult => ({ ok: true, message, redirect });
 export const fail = (message: string): ActionResult => ({ ok: false, message });
 
 export const str = (fd: FormData, k: string, max = 500) => String(fd.get(k) ?? "").trim().slice(0, max);
@@ -25,16 +25,23 @@ export const dateOnly = (fd: FormData, k: string) => {
   const v = str(fd, k);
   return v ? new Date(`${v}T12:00:00+03:00`) : null;
 };
-export const file = (fd: FormData, k: string) => {
-  const f = fd.get(k);
-  return f instanceof File && f.size > 0 ? f : null;
-};
-
-/** Prisma benzersizlik hatasını anlaşılır mesaja çevirir */
-export function prismaMessage(e: unknown) {
-  const code = (e as { code?: string })?.code;
-  if (code === "P2002") return "Bu kayıt zaten mevcut (benzersiz alan çakışması).";
-  if (code === "P2003") return "Bu kayıt başka kayıtlarla ilişkili olduğu için işlem yapılamadı.";
-  if (code === "P2025") return "Kayıt bulunamadı.";
+/** Firebase hatalarını anlaşılır mesaja çevirir */
+export function errMessage(e: unknown) {
+  const code = (e as { code?: string })?.code ?? "";
+  if (code.includes("permission-denied")) return "Bu işlem için yetkiniz yok (güvenlik kuralları).";
+  if (code.includes("not-found")) return "Kayıt bulunamadı.";
+  if (code.includes("unavailable")) return "Bağlantı sorunu. İnternetinizi kontrol edip tekrar deneyin.";
+  if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") return "E-posta veya şifre hatalı.";
+  if (code === "auth/email-already-in-use") return "Bu e-posta ile zaten bir hesap var.";
+  if (code === "auth/weak-password") return "Şifre en az 6 karakter olmalıdır.";
+  if (code === "auth/too-many-requests") return "Çok fazla deneme yapıldı. Biraz sonra tekrar deneyin.";
   return e instanceof Error ? e.message : "Beklenmeyen bir hata oluştu.";
+}
+
+/** Bağlantı alanı: boşsa null, http(s) değilse hata */
+export function url(fd: FormData, k: string) {
+  const v = str(fd, k, 600);
+  if (!v) return null;
+  if (!/^https?:\/\//i.test(v)) throw new Error("Bağlantılar http:// veya https:// ile başlamalıdır.");
+  return v;
 }

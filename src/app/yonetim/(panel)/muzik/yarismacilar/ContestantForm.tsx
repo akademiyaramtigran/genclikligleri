@@ -1,14 +1,17 @@
-import type { MusicContestant } from "@prisma/client";
-import { db } from "@/lib/db";
+"use client";
+
+import type { MusicCompetition, MusicContestant } from "@/lib/types";
+import { getAll } from "@/lib/data";
+import { useData } from "@/lib/hooks";
 import { CONTESTANT_STATUS, DISTRICTS, MUSIC_GENRES } from "@/lib/constants";
-import { parseJson } from "@/lib/utils";
 import { AdminForm } from "@/components/admin/AdminForm";
 import { FileField, FormGrid, SelectField, TextArea, TextField } from "@/components/admin/fields";
 import { saveContestant } from "@/actions/kultur";
 
-export async function ContestantForm({ c }: { c?: MusicContestant }) {
-  const comps = await db.musicCompetition.findMany({ orderBy: { createdAt: "desc" } });
-  const members = parseJson<{ name: string; role: string }[]>(c?.members, []).map((m) => `${m.name} | ${m.role}`).join("\n");
+export function ContestantForm({ c }: { c?: MusicContestant }) {
+  const comps = useData(() => getAll<MusicCompetition>("musicCompetitions"), []).data;
+  if (!comps) return null;
+  const members = (c?.members ?? []).map((m) => `${m.name} | ${m.role}`).join("\n");
   return (
     <AdminForm action={saveContestant} submitLabel={c ? "Kaydet" : "Yarışmacıyı Ekle"}>
       {c && <input type="hidden" name="id" value={c.id} />}

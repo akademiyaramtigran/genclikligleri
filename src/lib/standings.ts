@@ -1,28 +1,7 @@
-import { db } from "./db";
 import { sportDef } from "./constants";
 
-export type StandingRow = {
-  teamId: string;
-  name: string;
-  shortName: string;
-  slug: string;
-  logoUrl: string | null;
-  primaryColor: string;
-  secondaryColor: string;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  scored: number;
-  conceded: number;
-  diff: number;
-  points: number;
-  penalty: number;
-  form: ("G" | "B" | "M")[];
-  position: number;
-  /** Voleybol için set averajı yerine kullanılan oran */
-  ratio: number;
-};
+import type { StandingRow } from "./types";
+export type { StandingRow };
 
 type MatchLite = {
   homeTeamId: string;
@@ -98,20 +77,4 @@ export function computeStandings(
   });
   list.forEach((r, i) => (r.position = i + 1));
   return list;
-}
-
-export async function getLeagueStandings(leagueId: string) {
-  const league = await db.league.findUnique({
-    where: { id: leagueId },
-    include: {
-      entries: { include: { team: true } },
-      matches: { where: { status: "FINISHED" }, select: { homeTeamId: true, awayTeamId: true, homeScore: true, awayScore: true, date: true } },
-    },
-  });
-  if (!league) return [];
-  return computeStandings(
-    league.sport,
-    league.entries.map((e) => ({ ...e.team, penalty: e.penaltyPoints })),
-    league.matches,
-  );
 }

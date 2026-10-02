@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Heart, Loader2 } from "lucide-react";
-import { voteAction, type VoteState } from "./actions";
+import { voteAction, type VoteState } from "@/actions/public";
 import { cn } from "@/lib/utils";
 
 export function VoteButton({ contestantId, name, className, big }: { contestantId: string; name: string; className?: string; big?: boolean }) {

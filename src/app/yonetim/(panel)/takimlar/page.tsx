@@ -1,23 +1,30 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import { Search } from "lucide-react";
-import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { getLeagues, getTeams } from "@/lib/data";
+import { useData } from "@/lib/hooks";
+import { RequireUnit } from "../../AdminContext";
+import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { SPORT_LIST, sportDef } from "@/lib/constants";
 import { Badge, TeamCrest } from "@/components/ui";
 import { AdminHeader } from "@/components/admin/fields";
 import { FilterChips } from "@/components/FilterBar";
 
-export const metadata: Metadata = { title: "Takımlar" };
 
-export default async function TeamsAdmin({ searchParams }: { searchParams: Promise<{ brans?: string; cinsiyet?: string; q?: string }> }) {
-  await requireUser("SPOR");
-  const sp = await searchParams;
-  const teams = await db.team.findMany({
-    where: { ...(sp.brans ? { sport: sp.brans } : {}), ...(sp.cinsiyet ? { gender: sp.cinsiyet } : {}), ...(sp.q ? { name: { contains: sp.q } } : {}) },
-    include: { _count: { select: { players: true } }, entries: { include: { league: true } } },
-    orderBy: [{ sport: "asc" }, { gender: "asc" }, { name: "asc" }],
-  });
+export default function TeamsAdmin() {
+  return <RequireUnit unit="SPOR"><Suspended><Inner /></Suspended></RequireUnit>;
+}
+
+function Inner() {
+  const sp = { brans: useParam("brans"), cinsiyet: useParam("cinsiyet"), q: useParam("q") };
+  const { data, error } = useData(async () => ({ teams: await getTeams(), leagues: await getLeagues() }), []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const q = sp.q?.toLocaleLowerCase("tr-TR");
+  const lname = new Map(data.leagues.map((l) => [l.id, l.name]));
+  const teams = data.teams.filter((t) => (!sp.brans || t.sport === sp.brans) && (!sp.cinsiyet || t.gender === sp.cinsiyet) && (!q || t.name.toLocaleLowerCase("tr-TR").includes(q)))
+    .sort((a, b) => a.sport.localeCompare(b.sport) || a.gender.localeCompare(b.gender) || a.name.localeCompare(b.name, "tr"));
   const params = { brans: sp.brans, cinsiyet: sp.cinsiyet, q: sp.q };
   return (
     <>
@@ -33,15 +40,15 @@ export default async function TeamsAdmin({ searchParams }: { searchParams: Promi
       </div>
       <div className="card overflow-x-auto">
         <table className="table-base">
-          <thead><tr><th>Takım</th><th>Branş</th><th>İlçe</th><th>Lig</th><th className="text-center">Oyuncu</th><th>Durum</th></tr></thead>
+          <thead><tr><th>Takım</th><th>Branş</th><th>İlçe</th><th>Lig</th><th className="text-center">Antrenör</th><th>Durum</th></tr></thead>
           <tbody>
             {teams.map((t) => (
               <tr key={t.id} className="hover:bg-basalt-50">
-                <td><Link href={`/yonetim/takimlar/${t.id}`} className="flex items-center gap-2 font-semibold hover:text-dicle-700"><TeamCrest team={t} size={28} /> {t.name}</Link></td>
+                <td><Link href={`/yonetim/takimlar/duzenle?id=${t.id}`} className="flex items-center gap-2 font-semibold hover:text-dicle-700"><TeamCrest team={t} size={28} /> {t.name}</Link></td>
                 <td>{sportDef(t.sport).emoji} {sportDef(t.sport).label} <Badge tone={t.gender === "KADIN" ? "rose" : "blue"}>{t.gender === "KADIN" ? "K" : "E"}</Badge></td>
                 <td className="text-basalt-600">{t.district}</td>
-                <td className="max-w-[14rem] truncate text-xs text-basalt-600">{t.entries.map((e) => e.league.name).join(", ") || <span className="text-amber-600">Ligi yok</span>}</td>
-                <td className="text-center tabular-nums">{t._count.players}</td>
+                <td className="max-w-[14rem] truncate text-xs text-basalt-600">{t.leagueIds.map((id) => lname.get(id)).filter(Boolean).join(", ") || <span className="text-amber-600">Ligi yok</span>}</td>
+                <td className="text-center text-xs">{t.coachName ?? "—"}</td>
                 <td><Badge tone={t.status === "ACTIVE" ? "green" : "zinc"}>{t.status === "ACTIVE" ? "Aktif" : "Pasif"}</Badge></td>
               </tr>
             ))}

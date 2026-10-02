@@ -1,13 +1,16 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import { Drama, Heart, Music2, Scale, Trophy, Users } from "lucide-react";
-import { db } from "@/lib/db";
+import { countOf } from "@/lib/data";
+import { useData, useTitle } from "@/lib/hooks";
 import { PageHero, StatTile } from "@/components/ui";
 
-export const metadata: Metadata = { title: "Hakkımızda" };
 
-export default async function AboutPage() {
-  const [teams, players, contestants, groups] = await Promise.all([db.team.count(), db.player.count(), db.musicContestant.count(), db.theatreGroup.count()]);
+export default function AboutPage() {
+  useTitle("Hakkımızda");
+  const { data } = useData(() => Promise.all([countOf("teams"), countOf("players"), countOf("musicContestants"), countOf("theatreGroups")]).catch(() => [0, 0, 0, 0]), []);
+  const [teams, players, contestants, groups] = data ?? ["…", "…", "…", "…"];
   const values = [
     [Users, "Kapsayıcılık", "17 ilçenin tamamından, her gençliğe eşit fırsat. Kadın ligleri erkek ligleriyle aynı imkânlara sahiptir."],
     [Scale, "Şeffaflık", "Tüm sonuçlar, puanlar ve istatistikler anlık olarak herkese açık yayımlanır; maçlar kayıt altına alınır."],

@@ -1,18 +1,20 @@
-import type { Metadata } from "next";
+"use client";
+
 import { Trash2, MailOpen, Mail } from "lucide-react";
-import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { getMessages } from "@/lib/admin-data";
+import { useData } from "@/lib/hooks";
+import { ErrorBox, PageLoader } from "@/components/client";
 import { formatDateTime, cn } from "@/lib/utils";
 import { Badge, EmptyState } from "@/components/ui";
 import { AdminHeader } from "@/components/admin/fields";
 import { ActionButton } from "@/components/admin/AdminForm";
 import { messageAction } from "@/actions/genel";
 
-export const metadata: Metadata = { title: "Mesajlar" };
 
-export default async function MessagesAdmin() {
-  await requireUser();
-  const list = await db.contactMessage.findMany({ orderBy: [{ isRead: "asc" }, { createdAt: "desc" }], take: 200 });
+export default function MessagesAdmin() {
+  const { data: list, error } = useData(getMessages, []);
+  if (error) return <ErrorBox message={error} />;
+  if (!list) return <PageLoader />;
   return (
     <>
       <AdminHeader title="İletişim Mesajları" description={`${list.filter((m) => !m.isRead).length} okunmamış`} />

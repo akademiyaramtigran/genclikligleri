@@ -1,34 +1,38 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import { Search, FileText } from "lucide-react";
-import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { getApplications } from "@/lib/admin-data";
+import { useData } from "@/lib/hooks";
+import { useAdmin } from "../../AdminContext";
+import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { APPLICATION_STATUS, CATEGORIES } from "@/lib/constants";
-import { formatDateTime, parseJson } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import { Badge, EmptyState } from "@/components/ui";
 import { AdminHeader } from "@/components/admin/fields";
 import { FilterChips, Pagination } from "@/components/FilterBar";
 
-export const metadata: Metadata = { title: "Başvurular" };
 const PER = 25;
 
-export default async function ApplicationsAdmin({ searchParams }: { searchParams: Promise<{ durum?: string; kategori?: string; donem?: string; q?: string; sayfa?: string }> }) {
-  const user = await requireUser();
-  const sp = await searchParams;
+export default function ApplicationsAdmin() {
+  return <Suspended><Inner /></Suspended>;
+}
+
+function Inner() {
+  const user = useAdmin();
+  const sp = { durum: useParam("durum"), kategori: useParam("kategori"), donem: useParam("donem"), q: useParam("q"), sayfa: useParam("sayfa") };
   const page = Math.max(1, Number(sp.sayfa) || 1);
   const allowed = user.role === "SUPER_ADMIN" || user.scope === "ALL" ? ["SPOR", "MUZIK", "TIYATRO"] : [user.scope];
-  const cat = sp.kategori && allowed.includes(sp.kategori) ? [sp.kategori] : allowed;
-  const where = {
-    period: { category: { in: cat }, ...(sp.donem ? { id: sp.donem } : {}) },
-    ...(sp.durum ? { status: sp.durum } : {}),
-    ...(sp.q ? { OR: [{ title: { contains: sp.q } }, { applicantName: { contains: sp.q } }, { trackingCode: { contains: sp.q.toUpperCase() } }] } : {}),
-  };
-  const [total, apps, counts] = await Promise.all([
-    db.application.count({ where }),
-    db.application.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PER, take: PER, include: { period: true, _count: { select: { documents: true } } } }),
-    db.application.groupBy({ by: ["status"], where: { period: { category: { in: allowed } } }, _count: { _all: true } }),
-  ]);
-  const cnt = (s: string) => counts.find((c) => c.status === s)?._count._all ?? 0;
+  const { data, error } = useData(() => getApplications(user), []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const q = sp.q?.toLocaleLowerCase("tr-TR");
+  const base = data.filter((a) => allowed.includes(a.category));
+  const filtered = base.filter((a) => (!sp.kategori || a.category === sp.kategori) && (!sp.donem || a.periodId === sp.donem) && (!sp.durum || a.status === sp.durum)
+    && (!q || `${a.title} ${a.applicantName} ${a.trackingCode}`.toLocaleLowerCase("tr-TR").includes(q)));
+  const total = filtered.length;
+  const apps = filtered.slice((page - 1) * PER, page * PER);
+  const cnt = (s: string) => base.filter((a) => a.status === s).length;
   const params = { durum: sp.durum, kategori: sp.kategori, donem: sp.donem, q: sp.q };
 
   return (
@@ -51,10 +55,10 @@ export default async function ApplicationsAdmin({ searchParams }: { searchParams
               {apps.map((a) => (
                 <tr key={a.id} className="hover:bg-basalt-50">
                   <td className="font-mono text-xs">{a.trackingCode}</td>
-                  <td><Link href={`/yonetim/basvurular/${a.id}`} className="font-semibold hover:text-dicle-700">{a.title}</Link><p className="text-xs text-basalt-500">{a.applicantName} · {a.district}</p></td>
-                  <td className="max-w-[16rem] truncate text-basalt-600"><Badge tone={a.period.category === "SPOR" ? "green" : a.period.category === "MUZIK" ? "fuchsia" : "amber"}>{CATEGORIES[a.period.category as keyof typeof CATEGORIES]?.label}</Badge> {a.period.title}</td>
-                  <td className="text-center tabular-nums">{parseJson<unknown[]>(a.members, []).length}</td>
-                  <td className="text-center"><span className="inline-flex items-center gap-1 text-basalt-600"><FileText className="h-3.5 w-3.5" />{a._count.documents}</span></td>
+                  <td><Link href={`/yonetim/basvurular/duzenle?id=${a.id}`} className="font-semibold hover:text-dicle-700">{a.title}</Link><p className="text-xs text-basalt-500">{a.applicantName} · {a.district}</p></td>
+                  <td className="max-w-[16rem] truncate text-basalt-600"><Badge tone={a.category === "SPOR" ? "green" : a.category === "MUZIK" ? "fuchsia" : "amber"}>{CATEGORIES[a.category as keyof typeof CATEGORIES]?.label}</Badge> {a.periodTitle}</td>
+                  <td className="text-center tabular-nums">{a.members.length}</td>
+                  <td className="text-center"><span className="inline-flex items-center gap-1 text-basalt-600"><FileText className="h-3.5 w-3.5" />{a.documents.length}</span></td>
                   <td className="text-xs text-basalt-500">{formatDateTime(a.createdAt)}</td>
                   <td><Badge tone={APPLICATION_STATUS[a.status]?.tone}>{APPLICATION_STATUS[a.status]?.label}</Badge></td>
                 </tr>

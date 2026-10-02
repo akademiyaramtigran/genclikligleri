@@ -1,27 +1,36 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import { PlayCircle } from "lucide-react";
-import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { getActiveLeagues } from "@/lib/data";
+import { getAllMatches } from "@/lib/admin-data";
+import { useData } from "@/lib/hooks";
+import { RequireUnit } from "../../AdminContext";
+import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { MATCH_STATUS, sportDef } from "@/lib/constants";
 import { formatShortDate, formatTime } from "@/lib/utils";
 import { StatusBadge, TeamCrest } from "@/components/ui";
 import { AdminHeader } from "@/components/admin/fields";
 import { FilterChips, Pagination } from "@/components/FilterBar";
 
-export const metadata: Metadata = { title: "Maçlar" };
 const PER = 40;
 
-export default async function MatchesAdmin({ searchParams }: { searchParams: Promise<{ lig?: string; durum?: string; sayfa?: string }> }) {
-  await requireUser("SPOR");
-  const sp = await searchParams;
+export default function MatchesAdmin() {
+  return <RequireUnit unit="SPOR"><Suspended><Inner /></Suspended></RequireUnit>;
+}
+
+function Inner() {
+  const sp = { lig: useParam("lig"), durum: useParam("durum"), sayfa: useParam("sayfa") };
   const page = Math.max(1, Number(sp.sayfa) || 1);
-  const where = { ...(sp.lig ? { leagueId: sp.lig } : {}), ...(sp.durum === "bekleyen" ? { status: { in: ["SCHEDULED", "LIVE"] }, date: { lt: new Date() } } : sp.durum ? { status: sp.durum } : {}) };
-  const [leagues, total, matches] = await Promise.all([
-    db.league.findMany({ where: { season: { isActive: true } }, orderBy: [{ sport: "asc" }, { gender: "asc" }] }),
-    db.match.count({ where }),
-    db.match.findMany({ where, orderBy: sp.durum === "FINISHED" ? { date: "desc" } : { date: "asc" }, skip: (page - 1) * PER, take: PER, include: { homeTeam: true, awayTeam: true, league: true, _count: { select: { events: true } } } }),
-  ]);
+  const { data, error } = useData(async () => ({ leagues: await getActiveLeagues(), matches: await getAllMatches() }), []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const leagues = [...data.leagues].sort((a, b) => a.sport.localeCompare(b.sport) || a.gender.localeCompare(b.gender));
+  const now = new Date();
+  let list = data.matches.filter((m) => (!sp.lig || m.leagueId === sp.lig) && (sp.durum === "bekleyen" ? (m.status === "SCHEDULED" || m.status === "LIVE") && m.date < now : !sp.durum || m.status === sp.durum));
+  if (sp.durum === "FINISHED") list = [...list].reverse();
+  const total = list.length;
+  const matches = list.slice((page - 1) * PER, page * PER);
   const params = { lig: sp.lig, durum: sp.durum };
   return (
     <>
@@ -36,12 +45,12 @@ export default async function MatchesAdmin({ searchParams }: { searchParams: Pro
           <tbody>
             {matches.map((m) => (
               <tr key={m.id} className="hover:bg-basalt-50">
-                <td className="text-xs"><Link href={`/yonetim/maclar/${m.id}`} className="font-semibold hover:text-dicle-700">{formatShortDate(m.date)} {formatTime(m.date)}</Link></td>
-                <td className="text-xs text-basalt-600">{sportDef(m.league.sport).emoji} {m.league.name.replace(" Gençlik Ligi", "")} · {m.round}. H</td>
-                <td className="text-right"><span className="inline-flex items-center gap-2">{m.homeTeam.name}<TeamCrest team={m.homeTeam} size={22} /></span></td>
-                <td className="text-center"><Link href={`/yonetim/maclar/${m.id}`} className="rounded bg-basalt-100 px-2 py-1 font-display font-bold tabular-nums hover:bg-basalt-200">{m.homeScore ?? "–"} : {m.awayScore ?? "–"}</Link></td>
-                <td><span className="inline-flex items-center gap-2"><TeamCrest team={m.awayTeam} size={22} />{m.awayTeam.name}</span></td>
-                <td className="text-center text-xs">{m._count.events} {m.youtubeUrl && <PlayCircle className="ml-1 inline h-4 w-4 text-red-500" />}</td>
+                <td className="text-xs"><Link href={`/yonetim/maclar/duzenle?id=${m.id}`} className="font-semibold hover:text-dicle-700">{formatShortDate(m.date)} {formatTime(m.date)}</Link></td>
+                <td className="text-xs text-basalt-600">{sportDef(m.sport).emoji} {m.leagueName.replace(" Gençlik Ligi", "")} · {m.round}. H</td>
+                <td className="text-right"><span className="inline-flex items-center gap-2">{m.home.name}<TeamCrest team={m.home} size={22} /></span></td>
+                <td className="text-center"><Link href={`/yonetim/maclar/duzenle?id=${m.id}`} className="rounded bg-basalt-100 px-2 py-1 font-display font-bold tabular-nums hover:bg-basalt-200">{m.homeScore ?? "–"} : {m.awayScore ?? "–"}</Link></td>
+                <td><span className="inline-flex items-center gap-2"><TeamCrest team={m.away} size={22} />{m.away.name}</span></td>
+                <td className="text-center text-xs">{m.events.length} {m.youtubeUrl && <PlayCircle className="ml-1 inline h-4 w-4 text-red-500" />}</td>
                 <td><StatusBadge map={MATCH_STATUS} value={m.status} /></td>
               </tr>
             ))}

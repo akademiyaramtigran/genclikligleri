@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { CheckCircle2, Loader2, Send } from "lucide-react";
-import { sendMessage, type ContactState } from "./actions";
+import { sendMessage, type ContactState } from "@/actions/public";
 
 export function ContactForm() {
   const [state, action, pending] = useActionState<ContactState, FormData>(sendMessage, null);

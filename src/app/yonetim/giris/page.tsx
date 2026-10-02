@@ -1,15 +1,13 @@
-import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+"use client";
+
+import Link from "next/link";
 import { LoginForm } from "./LoginForm";
 import { Logo } from "@/components/Header";
-import Link from "next/link";
+import { Suspended } from "@/components/client";
+import { useTitle } from "@/lib/hooks";
 
-export const metadata: Metadata = { title: "Yönetim Girişi", robots: { index: false } };
-
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  if (await getCurrentUser()) redirect("/yonetim");
-  const { next } = await searchParams;
+export default function LoginPage() {
+  useTitle("Yönetim Girişi");
   return (
     <div className="bg-basalt-wall relative flex min-h-screen items-center justify-center px-4 py-12">
       <div className="pointer-events-none absolute left-1/4 top-1/4 h-72 w-72 rounded-full bg-dicle-500/20 blur-3xl" />
@@ -22,8 +20,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div className="card p-8">
           <h1 className="text-xl font-bold">Yönetim Paneli</h1>
           <p className="mt-1 text-sm text-basalt-500">Organizasyon yöneticileri için giriş</p>
-          <LoginForm next={next} />
+          <Suspended><LoginForm /></Suspended>
         </div>
+        <p className="mt-6 text-center text-xs text-white/50">İlk kurulum mu? <Link href="/yonetim/kurulum" className="underline hover:text-white">Yönetici hesabı oluştur</Link></p>
       </div>
     </div>
   );

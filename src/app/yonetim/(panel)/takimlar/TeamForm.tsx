@@ -1,12 +1,17 @@
-import type { Team } from "@prisma/client";
-import { db } from "@/lib/db";
+"use client";
+
+import type { Team } from "@/lib/types";
+import { getLeague, getVenues } from "@/lib/data";
+import { useData } from "@/lib/hooks";
 import { DISTRICTS, SPORTS } from "@/lib/constants";
 import { AdminForm } from "@/components/admin/AdminForm";
 import { FileField, FormGrid, SelectField, TextArea, TextField } from "@/components/admin/fields";
 import { saveTeam } from "@/actions/spor";
 
-export async function TeamForm({ team, leagueId }: { team?: Team; leagueId?: string }) {
-  const [venues, league] = await Promise.all([db.venue.findMany({ orderBy: { name: "asc" } }), leagueId ? db.league.findUnique({ where: { id: leagueId } }) : null]);
+export function TeamForm({ team, leagueId }: { team?: Team; leagueId?: string }) {
+  const { data } = useData(async () => ({ venues: await getVenues(), league: leagueId ? await getLeague(leagueId) : null }), [leagueId]);
+  if (!data) return null;
+  const { venues, league } = data;
   return (
     <AdminForm action={saveTeam} submitLabel={team ? "Kaydet" : "Takımı Oluştur"}>
       {team && <input type="hidden" name="id" value={team.id} />}
@@ -34,8 +39,6 @@ export async function TeamForm({ team, leagueId }: { team?: Team; leagueId?: str
         <FormGrid>
           <TextField label="Antrenör" name="coachName" defaultValue={team?.coachName} />
           <TextField label="Takım Sorumlusu" name="managerName" defaultValue={team?.managerName} />
-          <TextField label="Telefon" name="contactPhone" defaultValue={team?.contactPhone} hint="Sitede yayımlanmaz." />
-          <TextField label="E-posta" name="contactEmail" type="email" defaultValue={team?.contactEmail} hint="Sitede yayımlanmaz." />
         </FormGrid>
         <FormGrid>
           <SelectField label="İç Saha / Salon" name="venueId" defaultValue={team?.venueId} empty="—" options={venues.map((v) => ({ value: v.id, label: `${v.name} (${v.district})` }))} />

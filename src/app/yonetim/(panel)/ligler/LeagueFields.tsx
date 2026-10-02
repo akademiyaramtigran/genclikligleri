@@ -1,4 +1,6 @@
-import type { League, Season } from "@prisma/client";
+"use client";
+
+import type { League, Season } from "@/lib/types";
 import { LEAGUE_STATUS, SPORTS } from "@/lib/constants";
 import { FormGrid, SelectField, TextArea, TextField } from "@/components/admin/fields";
 

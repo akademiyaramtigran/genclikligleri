@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, X, Trophy, Music2, Drama, ChevronDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useData } from "@/lib/hooks";
+import { getPeriods } from "@/lib/data";
+import { firebaseReady } from "@/lib/firebase";
+import { periodState } from "@/lib/periods";
 import { SITE } from "@/lib/constants";
 
 const SECTIONS = [
@@ -29,8 +33,10 @@ const LINKS = [
   { label: "Tesisler", href: "/tesisler" },
 ];
 
-export function Header({ openPeriods }: { openPeriods: number }) {
+export function Header() {
   const pathname = usePathname();
+  const { data: periods } = useData(() => (firebaseReady ? getPeriods() : Promise.resolve([])), []);
+  const openPeriods = (periods ?? []).filter((p) => periodState(p) === "OPEN").length;
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const section = SECTIONS.find((s) => pathname.startsWith(s.href))?.key;

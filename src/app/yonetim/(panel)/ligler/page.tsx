@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
-import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { getLeagues, getSeasons } from "@/lib/data";
+import { getAllMatches } from "@/lib/admin-data";
+import { useData } from "@/lib/hooks";
+import { RequireUnit } from "../../AdminContext";
+import { ErrorBox, PageLoader } from "@/components/client";
 import { LEAGUE_STATUS, sportDef } from "@/lib/constants";
 import { formatDate, toDateInput } from "@/lib/utils";
 import { Badge, StatusBadge } from "@/components/ui";
@@ -10,14 +14,23 @@ import { AdminForm } from "@/components/admin/AdminForm";
 import { saveLeague, saveSeason } from "@/actions/spor";
 import { LeagueFields } from "./LeagueFields";
 
-export const metadata: Metadata = { title: "Sezonlar & Ligler" };
 
-export default async function LeaguesAdmin() {
-  await requireUser("SPOR");
-  const [seasons, leagues] = await Promise.all([
-    db.season.findMany({ orderBy: { startDate: "desc" } }),
-    db.league.findMany({ include: { season: true, _count: { select: { entries: true, matches: true } }, matches: { where: { status: "FINISHED" }, select: { id: true } } }, orderBy: [{ season: { startDate: "desc" } }, { sport: "asc" }, { gender: "asc" }] }),
-  ]);
+export default function LeaguesAdmin() {
+  return <RequireUnit unit="SPOR"><Inner /></RequireUnit>;
+}
+
+function Inner() {
+  const { data, error } = useData(async () => {
+    const [seasons, leagues, matches] = await Promise.all([getSeasons(), getLeagues(), getAllMatches()]);
+    return {
+      seasons: [...seasons].sort((a, b) => b.startDate.getTime() - a.startDate.getTime()),
+      leagues: [...leagues].sort((a, b) => Number(b.seasonActive) - Number(a.seasonActive) || a.sport.localeCompare(b.sport) || a.gender.localeCompare(b.gender))
+        .map((l) => ({ ...l, played: matches.filter((m) => m.leagueId === l.id && m.status === "FINISHED").length, total: matches.filter((m) => m.leagueId === l.id).length })),
+    };
+  }, []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const { seasons, leagues } = data;
   return (
     <>
       <AdminHeader title="Sezonlar & Ligler" description="Branş ve kategori bazında ligleri oluşturun, takımları ekleyin ve fikstür üretin." />
@@ -29,10 +42,10 @@ export default async function LeaguesAdmin() {
               <tbody>
                 {leagues.map((l) => (
                   <tr key={l.id} className="hover:bg-basalt-50">
-                    <td><Link href={`/yonetim/ligler/${l.id}`} className="font-semibold hover:text-dicle-700">{sportDef(l.sport).emoji} {l.name}</Link> <Badge tone={l.gender === "KADIN" ? "rose" : "blue"}>{l.gender === "KADIN" ? "K" : "E"}</Badge></td>
-                    <td className="text-basalt-600">{l.season.name}</td>
-                    <td className="text-center tabular-nums">{l._count.entries}</td>
-                    <td className="text-center tabular-nums">{l.matches.length}/{l._count.matches}</td>
+                    <td><Link href={`/yonetim/ligler/duzenle?id=${l.id}`} className="font-semibold hover:text-dicle-700">{sportDef(l.sport).emoji} {l.name}</Link> <Badge tone={l.gender === "KADIN" ? "rose" : "blue"}>{l.gender === "KADIN" ? "K" : "E"}</Badge></td>
+                    <td className="text-basalt-600">{l.seasonName}</td>
+                    <td className="text-center tabular-nums">{l.entries.length}</td>
+                    <td className="text-center tabular-nums">{l.played}/{l.total}</td>
                     <td><StatusBadge map={LEAGUE_STATUS} value={l.status} /></td>
                   </tr>
                 ))}

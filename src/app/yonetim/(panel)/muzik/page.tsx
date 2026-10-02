@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import { Trash2, Trophy, Calculator } from "lucide-react";
-import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { getAll, getCompetitionData, getVenues, withVotes } from "@/lib/data";
+import { useData } from "@/lib/hooks";
+import type { MusicCompetition } from "@/lib/types";
+import { RequireUnit } from "../../AdminContext";
+import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { ROUND_STATUS } from "@/lib/constants";
 import { toDateTimeLocal, formatDate } from "@/lib/utils";
 import { Badge, StatusBadge } from "@/components/ui";
@@ -10,22 +14,27 @@ import { AdminHeader, CheckField, FormGrid, Panel, SelectField, TextArea, TextFi
 import { AdminForm, ActionButton } from "@/components/admin/AdminForm";
 import { addPerformers, applyPublicVotes, deleteRound, finalizeRound, saveCompetition, saveJury, savePerformance, saveRound } from "@/actions/kultur";
 
-export const metadata: Metadata = { title: "Müzik Yarışması" };
 
-export default async function MusicAdmin({ searchParams }: { searchParams: Promise<{ c?: string }> }) {
-  await requireUser("MUZIK");
-  const { c } = await searchParams;
-  const comps = await db.musicCompetition.findMany({ orderBy: { createdAt: "desc" } });
-  const include = {
-    rounds: { orderBy: { order: "asc" as const }, include: { venue: true, performances: { include: { contestant: { include: { _count: { select: { votes: { where: { NOT: { dayKey: { endsWith: "#ip" } } } } } } } } }, orderBy: [{ order: "asc" as const }] } } },
-    contestants: { orderBy: { name: "asc" as const } },
-    jury: { orderBy: { order: "asc" as const } },
-  };
-  const comp = (await db.musicCompetition.findFirst({ where: c ? { id: c } : { isCurrent: true }, include }))
-    ?? (await db.musicCompetition.findFirst({ orderBy: { createdAt: "desc" }, include }));
-  const venues = await db.venue.findMany({ orderBy: { name: "asc" } });
+export default function MusicAdmin() {
+  return <RequireUnit unit="MUZIK"><Suspended><Inner /></Suspended></RequireUnit>;
+}
 
-  const compFields = (x?: typeof comp) => (
+function Inner() {
+  const c = useParam("c");
+  const { data, error } = useData(async () => {
+    const [comps, venues] = await Promise.all([getAll<MusicCompetition>("musicCompetitions"), getVenues()]);
+    comps.sort((x, y) => (y.createdAt?.getTime?.() ?? 0) - (x.createdAt?.getTime?.() ?? 0));
+    const current = comps.find((x) => x.id === c) ?? comps.find((x) => x.isCurrent) ?? comps[0];
+    if (!current) return { comps, venues, comp: null };
+    const { contestants, rounds } = await getCompetitionData(current.id);
+    const votes = new Map((await withVotes(contestants)).map((x) => [x.id, x.votes ?? 0]));
+    return { comps, venues, comp: { ...current, contestants: contestants.sort((x, y) => x.name.localeCompare(y.name, "tr")), rounds, votes } };
+  }, [c]);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const { comps, venues, comp } = data;
+
+  const compFields = (x?: MusicCompetition | null) => (
     <div className="space-y-3">
       {x && <input type="hidden" name="id" value={x.id} />}
       <FormGrid><TextField label="Yarışma Adı" name="name" required defaultValue={x?.name ?? "Genç Sesler"} /><TextField label="Dönem" name="edition" required defaultValue={x?.edition} placeholder="2027" /></FormGrid>
@@ -52,7 +61,7 @@ export default async function MusicAdmin({ searchParams }: { searchParams: Promi
               const inRound = new Set(r.performances.map((p) => p.contestantId));
               const candidates = comp.contestants.filter((x) => !inRound.has(x.id) && x.status !== "ELIMINATED");
               return (
-                <Panel key={r.id} title={<span className="flex items-center gap-2">{r.order}. {r.name} <StatusBadge map={ROUND_STATUS} value={r.status} /></span>} description={`${formatDate(r.date, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })} · ${r.venue?.name ?? "Mekân yok"} · ${r.advanceCount ? `İlk ${r.advanceCount} tur atlar` : "Final turu"}`}
+                <Panel key={r.id} title={<span className="flex items-center gap-2">{r.order}. {r.name} <StatusBadge map={ROUND_STATUS} value={r.status} /></span>} description={`${formatDate(r.date, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })} · ${r.venueName ?? "Mekân yok"} · ${r.advanceCount ? `İlk ${r.advanceCount} tur atlar` : "Final turu"}`}
                   actions={<div className="flex flex-wrap gap-2">
                     <ActionButton action={applyPublicVotes} fields={{ roundId: r.id }} label="Halk Oylarını Puanla" icon={<Calculator className="h-3.5 w-3.5" />} confirm="Halk oyları 0-100 puana çevrilip toplam puanlar güncellenecek." />
                     <ActionButton action={finalizeRound} fields={{ roundId: r.id }} label="Turu Sonuçlandır" icon={<Trophy className="h-3.5 w-3.5" />} confirm="Sıralama hesaplanacak, tur atlayanlar ve elenenler belirlenecek. Devam?" className="btn-accent btn-sm" />
@@ -60,17 +69,18 @@ export default async function MusicAdmin({ searchParams }: { searchParams: Promi
                   <div className="space-y-3">
                     {r.performances.length === 0 && <p className="text-sm text-basalt-500">Bu tura henüz yarışmacı eklenmedi.</p>}
                     {r.performances.map((p) => (
-                      <details key={p.id} className="rounded-xl border border-basalt-200">
+                      <details key={p.contestantId} className="rounded-xl border border-basalt-200">
                         <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 px-3 py-2.5">
                           <span className="w-6 text-center font-display font-bold text-basalt-400">{p.rank ?? p.order}</span>
-                          <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{p.contestant.name}</span><span className="text-xs text-basalt-500">♪ {p.songTitle} · {p.contestant._count.votes} halk oyu</span></span>
+                          <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{p.contestantName}</span><span className="text-xs text-basalt-500">♪ {p.songTitle} · {comp.votes.get(p.contestantId) ?? 0} halk oyu</span></span>
                           <span className="text-xs text-basalt-500">J {p.juryScore ?? "–"} · H {p.publicScore ?? "–"}</span>
                           <span className="rounded bg-basalt-900 px-2 py-0.5 font-display text-sm font-bold text-white">{p.totalScore?.toFixed(1) ?? "–"}</span>
                           {r.status === "COMPLETED" && (p.advanced ? <Badge tone="green">Tur atladı</Badge> : <Badge tone="zinc">Elendi</Badge>)}
                         </summary>
                         <div className="border-t border-basalt-100 p-3">
                           <AdminForm action={savePerformance} compact>
-                            <input type="hidden" name="id" value={p.id} />
+                            <input type="hidden" name="roundId" value={r.id} />
+                            <input type="hidden" name="contestantId" value={p.contestantId} />
                             <div className="space-y-3">
                               <FormGrid cols={3}><TextField label="Eser" name="songTitle" defaultValue={p.songTitle} /><TextField label="Eserin Sahibi" name="songArtist" defaultValue={p.songArtist} /><TextField label="Sahne Sırası" name="order" type="number" defaultValue={p.order} /></FormGrid>
                               <FormGrid cols={3}><TextField label="Jüri Puanı (0-100)" name="juryScore" type="number" step="0.1" min={0} max={100} defaultValue={p.juryScore} /><TextField label="Halk Puanı (0-100)" name="publicScore" type="number" step="0.1" min={0} max={100} defaultValue={p.publicScore} /><TextField label="Performans Videosu" name="youtubeUrl" defaultValue={p.youtubeUrl} /></FormGrid>
@@ -78,7 +88,7 @@ export default async function MusicAdmin({ searchParams }: { searchParams: Promi
                               <p className="hint">Toplam puan = Jüri × %70 + Halk × %30 olarak otomatik hesaplanır.</p>
                             </div>
                           </AdminForm>
-                          <div className="mt-2"><ActionButton action={savePerformance} fields={{ id: p.id, remove: "1" }} label="Turdan çıkar" confirm="Yarışmacı bu turdan çıkarılsın mı?" className="btn-ghost btn-sm text-red-600" /></div>
+                          <div className="mt-2"><ActionButton action={savePerformance} fields={{ roundId: r.id, contestantId: p.contestantId, remove: "1" }} label="Turdan çıkar" confirm="Yarışmacı bu turdan çıkarılsın mı?" className="btn-ghost btn-sm text-red-600" /></div>
                         </div>
                       </details>
                     ))}
@@ -109,19 +119,19 @@ export default async function MusicAdmin({ searchParams }: { searchParams: Promi
             </Panel>
           </div>
           <aside className="space-y-6">
-            <Panel title="Yarışma Ayarları"><AdminForm action={saveCompetition} compact>{compFields(comp)}</AdminForm></Panel>
+            <Panel title="Yarışma Ayarları"><AdminForm key={comp.id} action={saveCompetition} compact>{compFields(comp)}</AdminForm></Panel>
             <Panel title="Jüri">
               <div className="space-y-2">
-                {comp.jury.map((j) => (
-                  <div key={j.id} className="flex items-center justify-between gap-2 text-sm">
+                {comp.jury.map((j, ji) => (
+                  <div key={ji} className="flex items-center justify-between gap-2 text-sm">
                     <span><strong>{j.name}</strong><span className="block text-xs text-basalt-500">{j.title}</span></span>
-                    <ActionButton action={saveJury} fields={{ id: j.id, remove: "1" }} label="" icon={<Trash2 className="h-3.5 w-3.5" />} className="btn-ghost btn-sm text-red-500" confirm="Jüri üyesi silinsin mi?" />
+                    <ActionButton action={saveJury} fields={{ competitionId: comp.id, remove: String(ji) }} label="" icon={<Trash2 className="h-3.5 w-3.5" />} className="btn-ghost btn-sm text-red-500" confirm="Jüri üyesi silinsin mi?" />
                   </div>
                 ))}
               </div>
               <AdminForm action={saveJury} compact resetOnSuccess submitLabel="Ekle" className="mt-4 border-t border-basalt-100 pt-4">
                 <input type="hidden" name="competitionId" value={comp.id} />
-                <div className="space-y-2"><TextField label="Ad Soyad" name="name" required /><TextField label="Unvan" name="title" required /><TextField label="Sıra" name="order" type="number" defaultValue={comp.jury.length + 1} /></div>
+                <div className="space-y-2"><TextField label="Ad Soyad" name="name" required /><TextField label="Unvan" name="title" required /></div>
               </AdminForm>
             </Panel>
             <Panel title="Yeni Yarışma Dönemi"><AdminForm action={saveCompetition} compact submitLabel="Oluştur">{compFields()}</AdminForm></Panel>
@@ -132,7 +142,7 @@ export default async function MusicAdmin({ searchParams }: { searchParams: Promi
   );
 }
 
-function RoundFields({ r, venues, order }: { r?: { name: string; order: number; date: Date; venueId: string | null; status: string; advanceCount: number | null; youtubeUrl: string | null; description: string | null }; venues: { id: string; name: string }[]; order?: number }) {
+function RoundFields({ r, venues, order }: { r?: { name: string; order: number; date: Date; venueId?: string | null; status: string; advanceCount?: number | null; youtubeUrl?: string | null; description?: string | null }; venues: { id: string; name: string }[]; order?: number }) {
   return (
     <div className="space-y-3">
       <FormGrid cols={3}><TextField label="Tur Adı" name="name" required defaultValue={r?.name} placeholder="Yarı Final" /><TextField label="Sıra" name="order" type="number" defaultValue={r?.order ?? order} /><TextField label="Tarih" name="date" type="datetime-local" required defaultValue={toDateTimeLocal(r?.date)} /></FormGrid>

@@ -1,8 +1,10 @@
-import type { Metadata } from "next";
+"use client";
+
 import { Trash2 } from "lucide-react";
-import type { Video } from "@prisma/client";
-import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import type { Video } from "@/lib/types";
+import { getAll } from "@/lib/data";
+import { useData } from "@/lib/hooks";
+import { ErrorBox, PageLoader } from "@/components/client";
 import { ANNOUNCEMENT_CATEGORIES } from "@/lib/constants";
 import { Badge } from "@/components/ui";
 import { AdminHeader, CheckField, FormGrid, Panel, SelectField, TextArea, TextField } from "@/components/admin/fields";
@@ -10,7 +12,6 @@ import { AdminForm, ActionButton } from "@/components/admin/AdminForm";
 import { YouTubeThumb } from "@/components/YouTubeEmbed";
 import { deleteVideo, saveVideo } from "@/actions/genel";
 
-export const metadata: Metadata = { title: "Videolar" };
 const CATS = { GENEL: "Genel", SPOR: "Spor", MUZIK: "Müzik", TIYATRO: "Tiyatro" };
 
 function VideoFields({ v }: { v?: Video }) {
@@ -25,9 +26,10 @@ function VideoFields({ v }: { v?: Video }) {
   );
 }
 
-export default async function VideosAdmin() {
-  await requireUser();
-  const videos = await db.video.findMany({ orderBy: { publishedAt: "desc" } });
+export default function VideosAdmin() {
+  const { data: videos, error } = useData(async () => (await getAll<Video>("videos")).sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()), []);
+  if (error) return <ErrorBox message={error} />;
+  if (!videos) return <PageLoader />;
   return (
     <>
       <AdminHeader title="Videolar" description="Genel videolar (tanıtım, özet, röportaj). Maç, tur ve oyun videoları ilgili kayıtların içinden eklenir ve arşivde otomatik görünür." />
@@ -40,7 +42,7 @@ export default async function VideosAdmin() {
                 <div className="flex items-center gap-2 p-3"><span className="flex-1 truncate text-sm font-semibold">{v.title}</span><Badge>{ANNOUNCEMENT_CATEGORIES[v.category]}</Badge>{v.isFeatured && <Badge tone="amber">★</Badge>}</div>
               </summary>
               <div className="border-t border-basalt-100 p-3">
-                <AdminForm action={saveVideo} compact><VideoFields v={v} /></AdminForm>
+                <AdminForm key={v.id} action={saveVideo} compact><VideoFields v={v} /></AdminForm>
                 <div className="mt-2"><ActionButton action={deleteVideo} fields={{ id: v.id }} label="Sil" icon={<Trash2 className="h-3.5 w-3.5" />} confirm="Video silinsin mi?" className="btn-ghost btn-sm text-red-600" /></div>
               </div>
             </details>

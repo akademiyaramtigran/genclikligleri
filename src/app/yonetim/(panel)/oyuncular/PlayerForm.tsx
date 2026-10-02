@@ -1,13 +1,17 @@
-import type { Player } from "@prisma/client";
-import { db } from "@/lib/db";
+"use client";
+
+import type { Player } from "@/lib/types";
+import { getOne, getTeams } from "@/lib/data";
+import { useData } from "@/lib/hooks";
 import { DISTRICTS, PLAYER_STATUS, SPORT_LIST } from "@/lib/constants";
-import { toDateInput } from "@/lib/utils";
 import { AdminForm } from "@/components/admin/AdminForm";
 import { CheckField, FileField, FormGrid, SelectField, TextArea, TextField } from "@/components/admin/fields";
 import { savePlayer } from "@/actions/spor";
 
-export async function PlayerForm({ player, teamId }: { player?: Player; teamId?: string }) {
-  const teams = await db.team.findMany({ where: { status: "ACTIVE" }, orderBy: [{ sport: "asc" }, { name: "asc" }] });
+export function PlayerForm({ player, teamId }: { player?: Player; teamId?: string }) {
+  const { data } = useData(async () => ({ teams: (await getTeams()).filter((t) => t.status === "ACTIVE"), priv: player ? await getOne<{ identityNo?: string | null }>("playerPrivate", player.id).catch(() => null) : null }), [player?.id]);
+  if (!data) return null;
+  const { teams, priv } = data;
   const positions = [...new Set(SPORT_LIST.flatMap((s) => s.positions))];
   return (
     <AdminForm action={savePlayer} submitLabel={player ? "Kaydet" : "Oyuncuyu Oluştur"}>
@@ -22,7 +26,7 @@ export async function PlayerForm({ player, teamId }: { player?: Player; teamId?:
           <SelectField label="Cinsiyet (takımsızsa)" name="gender" defaultValue={player?.gender} options={{ ERKEK: "Erkek", KADIN: "Kadın" }} />
         </FormGrid>
         <FormGrid cols={4}>
-          <TextField label="Doğum Tarihi" name="birthDate" type="date" defaultValue={toDateInput(player?.birthDate)} />
+          <TextField label="Doğum Tarihi" name="birthDate" type="date" defaultValue={player?.birthDate ?? ""} />
           <SelectField label="Mevki" name="position" defaultValue={player?.position} empty="—" options={positions.map((p) => ({ value: p, label: p }))} />
           <TextField label="Forma No" name="jerseyNumber" type="number" min={0} max={99} defaultValue={player?.jerseyNumber} />
           <SelectField label="Durum" name="status" defaultValue={player?.status} options={Object.fromEntries(Object.entries(PLAYER_STATUS).map(([k, v]) => [k, v.label]))} />
@@ -38,7 +42,7 @@ export async function PlayerForm({ player, teamId }: { player?: Player; teamId?:
         </FormGrid>
         <FormGrid>
           <TextField label="Lisans No" name="licenseNo" defaultValue={player?.licenseNo} />
-          <TextField label="T.C. Kimlik No" name="identityNo" maxLength={11} pattern="\d{11}" defaultValue={player?.identityNo} hint="Gizli — sitede gösterilmez." />
+          <TextField label="T.C. Kimlik No" name="identityNo" maxLength={11} pattern="\d{11}" defaultValue={priv?.identityNo} hint="Gizli — sitede gösterilmez." />
         </FormGrid>
         <FileField label="Fotoğraf" name="photo" current={player?.photoUrl} />
         <TextArea label="Biyografi" name="bio" rows={3} defaultValue={player?.bio} />

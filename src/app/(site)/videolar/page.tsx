@@ -1,31 +1,39 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
-import { db } from "@/lib/db";
+import { getCompetitionData, getCurrentCompetition, getCurrentFestival, getFestivalPlays, getSeasonMatches, getVideos } from "@/lib/data";
+import { useData, useTitle } from "@/lib/hooks";
+import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { ANNOUNCEMENT_CATEGORIES, SPORTS, type SportKey } from "@/lib/constants";
 import { cn, formatDate } from "@/lib/utils";
 import { EmptyState, PageHero } from "@/components/ui";
 import { FilterChips } from "@/components/FilterBar";
 import { YouTubeEmbed, YouTubeThumb } from "@/components/YouTubeEmbed";
 
-export const metadata: Metadata = { title: "Video Arşivi", description: "Maç kayıtları, müzik yarışması performansları ve tiyatro festivali videoları." };
 
 type Item = { key: string; title: string; url: string; category: string; date: Date; sub?: string; href?: string };
 
-export default async function VideosPage({ searchParams }: { searchParams: Promise<{ kategori?: string; v?: string }> }) {
-  const sp = await searchParams;
-  const [videos, matches, rounds, perfs, plays] = await Promise.all([
-    db.video.findMany({ orderBy: { publishedAt: "desc" } }),
-    db.match.findMany({ where: { youtubeUrl: { not: null } }, include: { homeTeam: true, awayTeam: true, league: true }, orderBy: { date: "desc" }, take: 120 }),
-    db.musicRound.findMany({ where: { youtubeUrl: { not: null } }, include: { competition: true } }),
-    db.musicPerformance.findMany({ where: { youtubeUrl: { not: null } }, include: { contestant: true, round: true } }),
-    db.theatrePlay.findMany({ where: { youtubeUrl: { not: null } }, include: { group: true, festival: true } }),
-  ]);
+export default function VideosPage() {
+  return <Suspended><Inner /></Suspended>;
+}
+
+function Inner() {
+  useTitle("Video Arşivi");
+  const sp = { kategori: useParam("kategori"), v: useParam("v") };
+  const { data, error } = useData(async () => {
+    const [videos, matches, comp, fest] = await Promise.all([getVideos(), getSeasonMatches(), getCurrentCompetition(), getCurrentFestival()]);
+    const [music, plays] = await Promise.all([comp ? getCompetitionData(comp.id) : null, fest ? getFestivalPlays(fest.id) : []]);
+    return { videos, matches, comp, rounds: music?.rounds ?? [], plays, fest };
+  }, []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const { videos, comp, fest } = data;
   const items: Item[] = [
     ...videos.map((v) => ({ key: v.id, title: v.title, url: v.youtubeUrl, category: v.category, date: v.publishedAt, sub: v.description ?? undefined })),
-    ...matches.map((m) => ({ key: `m-${m.id}`, title: `${m.homeTeam.name} ${m.homeScore ?? ""}-${m.awayScore ?? ""} ${m.awayTeam.name}`, url: m.youtubeUrl!, category: "SPOR", date: m.date, sub: `${SPORTS[m.league.sport as SportKey]?.emoji} ${m.league.name} · ${m.round}. Hafta`, href: `/spor/mac/${m.id}` })),
-    ...rounds.map((r) => ({ key: `r-${r.id}`, title: `${r.competition.name} ${r.competition.edition} — ${r.name}`, url: r.youtubeUrl!, category: "MUZIK", date: r.date, sub: "Tur kaydı", href: `/muzik?tur=${r.id}` })),
-    ...perfs.map((p) => ({ key: `p-${p.id}`, title: `${p.contestant.name} — ${p.songTitle}`, url: p.youtubeUrl!, category: "MUZIK", date: p.round.date, sub: p.round.name, href: `/muzik/yarismaci/${p.contestant.slug}` })),
-    ...plays.map((p) => ({ key: `t-${p.id}`, title: `${p.title} — ${p.group.name}`, url: p.youtubeUrl!, category: "TIYATRO", date: p.createdAt, sub: `${p.festival.edition} Tiyatro Festivali`, href: `/tiyatro/oyun/${p.slug}` })),
+    ...data.matches.filter((m) => m.youtubeUrl).map((m) => ({ key: `m-${m.id}`, title: `${m.home.name} ${m.homeScore ?? ""}-${m.awayScore ?? ""} ${m.away.name}`, url: m.youtubeUrl!, category: "SPOR", date: m.date, sub: `${SPORTS[m.sport as SportKey]?.emoji} ${m.leagueName} · ${m.round}. Hafta`, href: `/spor/mac?id=${m.id}` })),
+    ...data.rounds.filter((r) => r.youtubeUrl).map((r) => ({ key: `r-${r.id}`, title: `${comp?.name} ${comp?.edition} — ${r.name}`, url: r.youtubeUrl!, category: "MUZIK", date: r.date, sub: "Tur kaydı", href: `/muzik?tur=${r.id}` })),
+    ...data.rounds.flatMap((r) => r.performances.filter((p) => p.youtubeUrl).map((p) => ({ key: `p-${r.id}-${p.contestantId}`, title: `${p.contestantName} — ${p.songTitle}`, url: p.youtubeUrl!, category: "MUZIK", date: r.date, sub: r.name, href: `/muzik/yarismaci?s=${p.contestantSlug}` }))),
+    ...data.plays.filter((p) => p.youtubeUrl).map((p) => ({ key: `t-${p.id}`, title: `${p.title} — ${p.groupName}`, url: p.youtubeUrl!, category: "TIYATRO", date: p.shows[0]?.date ?? fest?.startDate ?? new Date(), sub: `${fest?.edition ?? ""} Tiyatro Festivali`, href: `/tiyatro/oyun?s=${p.slug}` })),
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
   const cat = sp.kategori?.toUpperCase();

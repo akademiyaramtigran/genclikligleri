@@ -3,20 +3,22 @@
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, FileUp, Loader2, Plus, Trash2, Upload, UserPlus, Copy } from "lucide-react";
-import { submitApplication, type ApplyState, type Member } from "./actions";
+import { submitApplication, type ApplyState, type Member } from "@/actions/public";
 import { cn } from "@/lib/utils";
-import { DISTRICTS, MUSIC_GENRES, THEATRE_GENRES, SPORTS, MAX_UPLOAD_MB, type RequiredDoc, type SportKey } from "@/lib/constants";
+import { DISTRICTS, MUSIC_GENRES, THEATRE_GENRES, SPORTS, type SportKey } from "@/lib/constants";
+import { MAX_DOC_MB as MAX_UPLOAD_MB } from "@/lib/files";
+import type { RequiredDoc } from "@/lib/types";
 
 type PeriodProps = {
   id: string;
   title: string;
   category: "SPOR" | "MUZIK" | "TIYATRO";
-  sport: string | null;
-  gender: string | null;
-  minMembers: number | null;
-  maxMembers: number | null;
-  minAge: number | null;
-  maxAge: number | null;
+  sport?: string | null;
+  gender?: string | null;
+  minMembers?: number | null;
+  maxMembers?: number | null;
+  minAge?: number | null;
+  maxAge?: number | null;
 };
 
 const STEPS = ["Başvuru Sahibi", "Bilgiler", "Kadro", "Belgeler", "Onay"];
@@ -137,7 +139,7 @@ export function ApplicationForm({ period, docs }: { period: PeriodProps; docs: R
               </select>
             </Field>
             <Field label="E-posta" required>{<input name="applicantEmail" type="email" required className="input" autoComplete="email" />}{err("applicantEmail")}</Field>
-            <Field label="Telefon" required>{<input name="applicantPhone" type="tel" required pattern="[0-9 +()-]{10,}" placeholder="05xx xxx xx xx" className="input" autoComplete="tel" />}{err("applicantPhone")}</Field>
+            <Field label="Telefon" required>{<input name="applicantPhone" type="tel" required pattern={"[\\d\\s+\\(\\)\\-]{10,}"} placeholder="05xx xxx xx xx" className="input" autoComplete="tel" />}{err("applicantPhone")}</Field>
             <Field label="İlçe" required>
               <select name="district" required className="input" defaultValue="">
                 <option value="" disabled>Seçiniz</option>

@@ -1,4 +1,6 @@
-import type { Announcement } from "@prisma/client";
+"use client";
+
+import type { Announcement } from "@/lib/types";
 import { ANNOUNCEMENT_CATEGORIES } from "@/lib/constants";
 import { toDateTimeLocal } from "@/lib/utils";
 import { AdminForm } from "@/components/admin/AdminForm";

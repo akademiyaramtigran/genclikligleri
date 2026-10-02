@@ -1,23 +1,30 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import { Users } from "lucide-react";
-import { db } from "@/lib/db";
+import { getTeams } from "@/lib/data";
+import { useData, useTitle } from "@/lib/hooks";
+import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { SPORT_LIST, sportBySlug, sportDef, DISTRICTS } from "@/lib/constants";
 import { EmptyState, PageHero, TeamCrest, Badge } from "@/components/ui";
 import { FilterChips } from "@/components/FilterBar";
 
-export const metadata: Metadata = { title: "Takımlar", description: "Diyarbakır gençlik liglerindeki tüm takımlar." };
 
-export default async function TeamsPage({ searchParams }: { searchParams: Promise<{ brans?: string; cinsiyet?: string; ilce?: string }> }) {
-  const sp = await searchParams;
+export default function TeamsPage() {
+  return <Suspended><Inner /></Suspended>;
+}
+
+function Inner() {
+  useTitle("Takımlar");
+  const params = { brans: useParam("brans"), cinsiyet: useParam("cinsiyet"), ilce: useParam("ilce") };
+  const sp = params;
   const sport = sportBySlug(sp.brans ?? "")?.key;
   const gender = sp.cinsiyet === "kadin" ? "KADIN" : sp.cinsiyet === "erkek" ? "ERKEK" : undefined;
-  const teams = await db.team.findMany({
-    where: { status: "ACTIVE", ...(sport ? { sport } : {}), ...(gender ? { gender } : {}), ...(sp.ilce ? { district: sp.ilce } : {}) },
-    include: { _count: { select: { players: true } } },
-    orderBy: [{ sport: "asc" }, { name: "asc" }],
-  });
-  const params = { brans: sp.brans, cinsiyet: sp.cinsiyet, ilce: sp.ilce };
+  const { data, error } = useData(getTeams, []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const teams = data.filter((t) => t.status === "ACTIVE" && (!sport || t.sport === sport) && (!gender || t.gender === gender) && (!sp.ilce || t.district === sp.ilce))
+    .sort((a, b) => a.sport.localeCompare(b.sport) || a.name.localeCompare(b.name, "tr"));
   const districts = DISTRICTS.map((d) => ({ value: d, label: d }));
 
   return (
@@ -32,7 +39,7 @@ export default async function TeamsPage({ searchParams }: { searchParams: Promis
         {teams.length === 0 && <EmptyState title="Takım bulunamadı" />}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {teams.map((t) => (
-            <Link key={t.id} href={`/spor/takim/${t.slug}`} className="card group relative overflow-hidden p-5 transition hover:-translate-y-0.5 hover:shadow-lg">
+            <Link key={t.id} href={`/spor/takim?s=${t.slug}`} className="card group relative overflow-hidden p-5 transition hover:-translate-y-0.5 hover:shadow-lg">
               <div className="absolute inset-x-0 top-0 h-1.5" style={{ background: `linear-gradient(90deg, ${t.primaryColor}, ${t.secondaryColor})` }} />
               <div className="flex items-center gap-3">
                 <TeamCrest team={t} size={52} />
@@ -44,7 +51,7 @@ export default async function TeamsPage({ searchParams }: { searchParams: Promis
               <div className="mt-4 flex items-center gap-2">
                 <Badge>{sportDef(t.sport).emoji} {sportDef(t.sport).label}</Badge>
                 <Badge tone={t.gender === "KADIN" ? "rose" : "blue"}>{t.gender === "KADIN" ? "Kadın" : "Erkek"}</Badge>
-                <span className="ml-auto flex items-center gap-1 text-xs text-basalt-500"><Users className="h-3.5 w-3.5" /> {t._count.players}</span>
+                <span className="ml-auto flex items-center gap-1 text-xs text-basalt-500"><Users className="h-3.5 w-3.5" /> {t.coachName ?? ""}</span>
               </div>
             </Link>
           ))}

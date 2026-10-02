@@ -1,14 +1,16 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import { ArrowRight, CalendarClock, FileCheck2, Search, Users } from "lucide-react";
-import { db } from "@/lib/db";
+import { getPeriods } from "@/lib/data";
+import { useData, useTitle } from "@/lib/hooks";
+import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { CATEGORIES, SPORTS, type SportKey } from "@/lib/constants";
 import { periodState, daysLeft, PERIOD_STATE_LABEL, type PeriodState } from "@/lib/periods";
-import { cn, formatDate, parseJson } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { Badge, EmptyState, PageHero } from "@/components/ui";
 import { FilterChips } from "@/components/FilterBar";
 
-export const metadata: Metadata = { title: "Başvurular", description: "Spor ligleri takım başvuruları, müzik yarışması ve tiyatro festivali başvuru dönemleri, şartlar ve istenen belgeler." };
 
 const CAT_STYLE: Record<string, { grad: string; tone: string; icon: string }> = {
   SPOR: { grad: "from-emerald-500 to-dicle-700", tone: "green", icon: "🏆" },
@@ -16,14 +18,18 @@ const CAT_STYLE: Record<string, { grad: string; tone: string; icon: string }> = 
   TIYATRO: { grad: "from-amber-600 to-curtain-900", tone: "amber", icon: "🎭" },
 };
 
-export default async function ApplyIndex({ searchParams }: { searchParams: Promise<{ kategori?: string }> }) {
-  const sp = await searchParams;
+export default function ApplyIndex() {
+  return <Suspended><Inner /></Suspended>;
+}
+
+function Inner() {
+  useTitle("Başvurular");
+  const sp = { kategori: useParam("kategori") };
   const cat = sp.kategori?.toUpperCase();
-  const periods = await db.applicationPeriod.findMany({
-    where: { isPublished: true, ...(cat && cat in CATEGORIES ? { category: cat } : {}) },
-    orderBy: { endDate: "desc" },
-    include: { _count: { select: { applications: true } } },
-  });
+  const { data, error } = useData(getPeriods, []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const periods = data.filter((p) => !cat || !(cat in CATEGORIES) || p.category === cat);
   const groups: Record<PeriodState, typeof periods> = { OPEN: [], UPCOMING: [], CLOSED: [] };
   for (const p of periods) groups[periodState(p)].push(p);
   groups.OPEN.sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
@@ -65,9 +71,9 @@ export default async function ApplyIndex({ searchParams }: { searchParams: Promi
               <div className={cn("grid gap-5", st === "CLOSED" ? "md:grid-cols-2 lg:grid-cols-3" : "lg:grid-cols-2")}>
                 {groups[st].map((p) => {
                   const style = CAT_STYLE[p.category]!;
-                  const docs = parseJson<unknown[]>(p.requiredDocuments, []);
+                  const docs = p.requiredDocuments ?? [];
                   return (
-                    <Link key={p.id} href={`/basvuru/${p.slug}`} className={cn("card group flex overflow-hidden transition hover:-translate-y-0.5 hover:shadow-xl", st === "CLOSED" && "opacity-75")}>
+                    <Link key={p.id} href={`/basvuru/detay?s=${p.slug}`} className={cn("card group flex overflow-hidden transition hover:-translate-y-0.5 hover:shadow-xl", st === "CLOSED" && "opacity-75")}>
                       <div className={cn("hidden w-28 shrink-0 flex-col items-center justify-center bg-gradient-to-b text-5xl sm:flex", style.grad)}>{style.icon}</div>
                       <div className="flex flex-1 flex-col p-5">
                         <div className="flex flex-wrap items-center gap-2">

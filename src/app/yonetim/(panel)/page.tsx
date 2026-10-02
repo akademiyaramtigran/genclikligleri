@@ -1,7 +1,14 @@
+"use client";
+
 import Link from "next/link";
 import { AlertTriangle, CalendarDays, Inbox, Mail, Mic2, Shield, Theater, Trophy, Users } from "lucide-react";
-import { db } from "@/lib/db";
-import { requireUser, canAccess } from "@/lib/auth";
+import { where } from "firebase/firestore";
+import { countOf, getCurrentCompetition, getCurrentFestival } from "@/lib/data";
+import { getAllMatches, getAllPeriods, getApplications, getLogs, getMessages } from "@/lib/admin-data";
+import { canAccess } from "@/lib/admin";
+import { useData } from "@/lib/hooks";
+import { useAdmin } from "../AdminContext";
+import { ErrorBox, PageLoader } from "@/components/client";
 import { APPLICATION_STATUS, CATEGORIES, sportDef } from "@/lib/constants";
 import { periodState } from "@/lib/periods";
 import { formatDateTime, formatShortDate, formatTime } from "@/lib/utils";
@@ -10,25 +17,41 @@ import { AdminHeader, Panel } from "@/components/admin/fields";
 import { AdminForm } from "@/components/admin/AdminForm";
 import { quickScore } from "@/actions/spor";
 
-export default async function Dashboard({ searchParams }: { searchParams: Promise<{ yetki?: string }> }) {
-  const user = await requireUser();
-  const { yetki } = await searchParams;
-  const now = new Date();
-  const [teams, players, finished, scheduled, pendingApps, recentApps, awaiting, periods, messages, logs, contestants, plays] = await Promise.all([
-    db.team.count({ where: { status: "ACTIVE" } }),
-    db.player.count(),
-    db.match.count({ where: { status: "FINISHED" } }),
-    db.match.count({ where: { status: "SCHEDULED", date: { gte: now } } }),
-    db.application.count({ where: { status: { in: ["PENDING", "IN_REVIEW"] } } }),
-    db.application.findMany({ orderBy: { createdAt: "desc" }, take: 6, include: { period: true } }),
-    db.match.findMany({ where: { status: { in: ["SCHEDULED", "LIVE"] }, date: { lt: now } }, orderBy: { date: "asc" }, take: 8, include: { homeTeam: true, awayTeam: true, league: true } }),
-    db.applicationPeriod.findMany({ where: { endDate: { gte: now } }, orderBy: { endDate: "asc" }, include: { _count: { select: { applications: true } } } }),
-    db.contactMessage.findMany({ where: { isRead: false }, orderBy: { createdAt: "desc" }, take: 4 }),
-    db.activityLog.findMany({ orderBy: { createdAt: "desc" }, take: 8, include: { user: true } }),
-    db.musicContestant.count({ where: { competition: { isCurrent: true } } }),
-    db.theatrePlay.count({ where: { festival: { isCurrent: true } } }),
-  ]);
+export default function Dashboard() {
+  const user = useAdmin();
   const showSport = canAccess(user, "SPOR");
+  const { data, error } = useData(async () => {
+    const now = new Date();
+    const [teams, players, apps, matches, periods, messages, logs, comp, fest] = await Promise.all([
+      countOf("teams", where("status", "==", "ACTIVE")).catch(() => 0),
+      countOf("players").catch(() => 0),
+      getApplications(user),
+      showSport ? getAllMatches() : Promise.resolve([]),
+      getAllPeriods(user),
+      getMessages().catch(() => []),
+      getLogs(8).catch(() => []),
+      getCurrentCompetition(),
+      getCurrentFestival(),
+    ]);
+    const [contestants, plays] = await Promise.all([
+      comp ? countOf("musicContestants", where("competitionId", "==", comp.id)) : 0,
+      fest ? countOf("theatrePlays", where("festivalId", "==", fest.id)) : 0,
+    ]);
+    return {
+      teams, players, contestants, plays, logs,
+      finished: matches.filter((m) => m.status === "FINISHED").length,
+      scheduled: matches.filter((m) => m.status === "SCHEDULED" && m.date >= now).length,
+      awaiting: matches.filter((m) => (m.status === "SCHEDULED" || m.status === "LIVE") && m.date < now).slice(0, 8),
+      pendingApps: apps.filter((a) => a.status === "PENDING" || a.status === "IN_REVIEW").length,
+      recentApps: apps.slice(0, 6),
+      periods: periods.filter((p) => p.endDate >= now).sort((x, y) => x.endDate.getTime() - y.endDate.getTime()).map((p) => ({ ...p, count: apps.filter((a) => a.periodId === p.id).length })),
+      messages: messages.filter((m) => !m.isRead).slice(0, 4),
+    };
+  }, []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const { teams, players, finished, scheduled, pendingApps, recentApps, awaiting, periods, messages, logs, contestants, plays } = data;
+  const yetki = undefined as string | undefined;
 
   return (
     <>
@@ -50,8 +73,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 {awaiting.map((m) => (
                   <div key={m.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs text-basalt-500">{sportDef(m.league.sport).emoji} {m.league.name} · {formatShortDate(m.date)} {formatTime(m.date)}</p>
-                      <p className="flex items-center gap-2 text-sm font-medium"><TeamCrest team={m.homeTeam} size={20} /> {m.homeTeam.name} <span className="text-basalt-400">vs</span> {m.awayTeam.name} <TeamCrest team={m.awayTeam} size={20} /></p>
+                      <p className="text-xs text-basalt-500">{sportDef(m.sport).emoji} {m.leagueName} · {formatShortDate(m.date)} {formatTime(m.date)}</p>
+                      <p className="flex items-center gap-2 text-sm font-medium"><TeamCrest team={m.home} size={20} /> {m.home.name} <span className="text-basalt-400">vs</span> {m.away.name} <TeamCrest team={m.away} size={20} /></p>
                     </div>
                     <AdminForm action={quickScore} submitLabel="Kaydet" compact className="flex items-center gap-2 [&>div]:mt-0">
                       <input type="hidden" name="id" value={m.id} />
@@ -59,7 +82,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                       <span>-</span>
                       <input name="awayScore" type="number" min={0} required className="input w-16 py-1.5 text-center" aria-label="Deplasman skor" />
                     </AdminForm>
-                    <Link href={`/yonetim/maclar/${m.id}`} className="text-xs text-dicle-700">Detay</Link>
+                    <Link href={`/yonetim/maclar/duzenle?id=${m.id}`} className="text-xs text-dicle-700">Detay</Link>
                   </div>
                 ))}
               </div>
@@ -73,8 +96,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 const st = periodState(p);
                 return (
                   <li key={p.id}>
-                    <Link href={`/yonetim/donemler/${p.id}`} className="flex items-center justify-between gap-2 rounded-lg p-2 hover:bg-basalt-50">
-                      <span className="min-w-0"><span className="block truncate text-sm font-medium">{p.title}</span><span className="text-xs text-basalt-500">{CATEGORIES[p.category as keyof typeof CATEGORIES]?.label} · {p._count.applications} başvuru</span></span>
+                    <Link href={`/yonetim/donemler/duzenle?id=${p.id}`} className="flex items-center justify-between gap-2 rounded-lg p-2 hover:bg-basalt-50">
+                      <span className="min-w-0"><span className="block truncate text-sm font-medium">{p.title}</span><span className="text-xs text-basalt-500">{CATEGORIES[p.category as keyof typeof CATEGORIES]?.label} · {p.count} başvuru</span></span>
                       <Badge tone={st === "OPEN" ? "green" : "amber"}>{st === "OPEN" ? "Açık" : "Yakında"}</Badge>
                     </Link>
                   </li>
@@ -93,8 +116,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               <tbody>
                 {recentApps.map((a) => (
                   <tr key={a.id}>
-                    <td><Link href={`/yonetim/basvurular/${a.id}`} className="font-medium hover:text-dicle-700">{a.title}</Link><p className="text-xs text-basalt-500">{a.applicantName} · {a.district}</p></td>
-                    <td className="max-w-[14rem] truncate text-basalt-600">{a.period.title}</td>
+                    <td><Link href={`/yonetim/basvurular/duzenle?id=${a.id}`} className="font-medium hover:text-dicle-700">{a.title}</Link><p className="text-xs text-basalt-500">{a.applicantName} · {a.district}</p></td>
+                    <td className="max-w-[14rem] truncate text-basalt-600">{a.periodTitle}</td>
                     <td className="text-basalt-500">{formatShortDate(a.createdAt)}</td>
                     <td><Badge tone={APPLICATION_STATUS[a.status]?.tone}>{APPLICATION_STATUS[a.status]?.label}</Badge></td>
                   </tr>
@@ -112,7 +135,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <Panel title="Son İşlemler">
             <ul className="space-y-2 text-xs">
               {logs.map((l) => (
-                <li key={l.id} className="flex gap-2"><span className="text-basalt-400">{formatDateTime(l.createdAt).split(" ").slice(-1)}</span><span><strong>{l.user?.name ?? "Sistem"}</strong> · {l.action} {l.entity}{l.details ? ` — ${l.details}` : ""}</span></li>
+                <li key={l.id} className="flex gap-2"><span className="text-basalt-400">{l.createdAt ? formatDateTime(l.createdAt).split(" ").slice(-1) : ""}</span><span><strong>{l.userName ?? "Sistem"}</strong> · {l.action} {l.entity}{l.details ? ` — ${l.details}` : ""}</span></li>
               ))}
             </ul>
           </Panel>

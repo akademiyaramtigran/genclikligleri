@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import { Award, CalendarDays, Gavel, MapPin, Mic2, Music2, Radio, Sparkles, Trophy, Users } from "lucide-react";
-import { db } from "@/lib/db";
+import { getCompetitionData, getCurrentCompetition, getPeriods, withVotes } from "@/lib/data";
+import { useData, useTitle } from "@/lib/hooks";
+import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { CONTESTANT_STATUS, ROUND_STATUS } from "@/lib/constants";
 import { cn, formatDate, initials, lines, pct } from "@/lib/utils";
 import { periodState } from "@/lib/periods";
@@ -10,21 +13,27 @@ import { Countdown } from "@/components/Countdown";
 import { YouTubeEmbed } from "@/components/YouTubeEmbed";
 import { VoteButton } from "./VoteButton";
 
-export const metadata: Metadata = { title: "Genç Sesler Müzik Yarışması", description: "Diyarbakır'ın genç seslerinin yarıştığı müzik yarışması: yarışmacılar, turlar, jüri puanları ve halk oylaması." };
 
 const GRADS = ["from-fuchsia-600 to-purple-900", "from-cyan-500 to-blue-900", "from-pink-500 to-rose-900", "from-violet-500 to-indigo-900", "from-amber-500 to-orange-900", "from-emerald-500 to-teal-900"];
 
-export default async function MusicPage({ searchParams }: { searchParams: Promise<{ tur?: string }> }) {
-  const { tur } = await searchParams;
-  const comp = await db.musicCompetition.findFirst({
-    where: { isCurrent: true },
-    include: {
-      contestants: { include: { _count: { select: { votes: { where: { NOT: { dayKey: { endsWith: "#ip" } } } } } } } },
-      rounds: { orderBy: { order: "asc" }, include: { venue: true, performances: { include: { contestant: true }, orderBy: [{ rank: "asc" }, { order: "asc" }] } } },
-      jury: { orderBy: { order: "asc" } },
-    },
-  });
-  const period = await db.applicationPeriod.findFirst({ where: { category: "MUZIK", isPublished: true, endDate: { gte: new Date() } }, orderBy: { startDate: "asc" } });
+export default function MusicPage() {
+  return <Suspended dark><Inner /></Suspended>;
+}
+
+function Inner() {
+  useTitle("Genç Sesler Müzik Yarışması");
+  const tur = useParam("tur");
+  const { data, error } = useData(async () => {
+    const [competition, periods] = await Promise.all([getCurrentCompetition(), getPeriods()]);
+    if (!competition) return { comp: null, period: null };
+    const { contestants, rounds } = await getCompetitionData(competition.id);
+    const withV = await withVotes(contestants);
+    const period = periods.filter((p) => p.category === "MUZIK" && p.endDate >= new Date()).sort((x, y) => x.startDate.getTime() - y.startDate.getTime())[0] ?? null;
+    return { comp: { ...competition, contestants: withV, rounds }, period };
+  }, []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader dark />;
+  const { comp, period } = data;
 
   if (!comp) {
     return (
@@ -40,8 +49,8 @@ export default async function MusicPage({ searchParams }: { searchParams: Promis
   const completed = comp.rounds.filter((r) => r.status === "COMPLETED");
   const selected = comp.rounds.find((r) => r.id === tur) ?? completed[completed.length - 1] ?? comp.rounds[0];
   const active = comp.contestants.filter((c) => c.status !== "ELIMINATED");
-  const totalVotes = active.reduce((s, c) => s + c._count.votes, 0);
-  const voteBoard = [...active].sort((a, b) => b._count.votes - a._count.votes);
+  const totalVotes = active.reduce((sum, c) => sum + (c.votes ?? 0), 0);
+  const voteBoard = [...active].sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0));
   const colorOf = (id: string) => GRADS[comp.contestants.findIndex((c) => c.id === id) % GRADS.length];
 
   return (
@@ -86,7 +95,7 @@ export default async function MusicPage({ searchParams }: { searchParams: Promis
               <Countdown to={nextRound.date} />
               <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-white/60">
                 <span className="flex items-center gap-1"><CalendarDays className="h-4 w-4" /> {formatDate(nextRound.date, { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</span>
-                {nextRound.venue && <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {nextRound.venue.name}</span>}
+                {nextRound.venueName && <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {nextRound.venueName}</span>}
               </p>
             </div>
           )}
@@ -126,13 +135,13 @@ export default async function MusicPage({ searchParams }: { searchParams: Promis
               </div>
               {selected.performances.length === 0 ? <p className="p-8 text-center text-white/50">Bu turun yarışmacıları henüz belirlenmedi.</p> : (
                 <ol className="divide-y divide-white/5">
-                  {selected.performances.map((p, i) => (
-                    <li key={p.id}>
-                      <Link href={`/muzik/yarismaci/${p.contestant.slug}`} className="flex items-center gap-4 px-6 py-4 transition hover:bg-white/5">
+                  {[...selected.performances].sort((x, y) => (x.rank ?? 99) - (y.rank ?? 99) || x.order - y.order).map((p, i) => (
+                    <li key={p.contestantId}>
+                      <Link href={`/muzik/yarismaci?s=${p.contestantSlug}`} className="flex items-center gap-4 px-6 py-4 transition hover:bg-white/5">
                         <span className={cn("w-8 text-center font-music text-xl font-black", selected.status === "COMPLETED" ? (i === 0 ? "text-amber-300" : i < 3 ? "text-fuchsia-300" : "text-white/30") : "text-white/40")}>{selected.status === "COMPLETED" ? p.rank ?? i + 1 : p.order}</span>
-                        <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br font-music text-sm font-black", colorOf(p.contestantId))}>{initials(p.contestant.name)}</span>
+                        <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br font-music text-sm font-black", colorOf(p.contestantId))}>{initials(p.contestantName)}</span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-semibold">{p.contestant.name}</p>
+                          <p className="truncate font-semibold">{p.contestantName}</p>
                           <p className="truncate text-xs text-white/50">♪ {p.songTitle}{p.songArtist ? ` — ${p.songArtist}` : ""}</p>
                           {p.totalScore != null && (
                             <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/10">
@@ -145,7 +154,7 @@ export default async function MusicPage({ searchParams }: { searchParams: Promis
                             <p className="font-music text-2xl font-black tabular-nums">{p.totalScore.toFixed(1)}</p>
                             <p className="text-[10px] text-white/40">J {p.juryScore} · H {p.publicScore}</p>
                           </div>
-                        ) : <Badge tone="dark">{p.contestant.genre}</Badge>}
+                        ) : <Badge tone="dark">{comp.contestants.find((c) => c.id === p.contestantId)?.genre}</Badge>}
                         {selected.status === "COMPLETED" && (p.advanced ? <Badge tone="green">Tur atladı</Badge> : <Badge tone="dark">Elendi</Badge>)}
                       </Link>
                     </li>
@@ -157,7 +166,7 @@ export default async function MusicPage({ searchParams }: { searchParams: Promis
               <h3 className="font-music text-lg font-bold uppercase">Tur Kaydı</h3>
               <YouTubeEmbed url={selected.youtubeUrl} title={`${comp.name} ${comp.edition} — ${selected.name}`} />
               {selected.description && <p className="text-sm text-white/60">{selected.description}</p>}
-              {selected.venue && <p className="flex items-center gap-2 text-sm text-white/60"><MapPin className="h-4 w-4 text-fuchsia-300" /> {selected.venue.name}</p>}
+              {selected.venueName && <p className="flex items-center gap-2 text-sm text-white/60"><MapPin className="h-4 w-4 text-fuchsia-300" /> {selected.venueName}</p>}
             </div>
           </div>
         </section>
@@ -175,8 +184,8 @@ export default async function MusicPage({ searchParams }: { searchParams: Promis
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {voteBoard.map((c, i) => (
                 <div key={c.id} className="group relative overflow-hidden rounded-3xl bg-white/5 p-5 ring-1 ring-white/10 transition hover:ring-fuchsia-400/50">
-                  {i === 0 && c._count.votes > 0 && <Badge tone="yellow" className="absolute right-4 top-4">Lider</Badge>}
-                  <Link href={`/muzik/yarismaci/${c.slug}`}>
+                  {i === 0 && (c.votes ?? 0) > 0 && <Badge tone="yellow" className="absolute right-4 top-4">Lider</Badge>}
+                  <Link href={`/muzik/yarismaci?s=${c.slug}`}>
                     <div className={cn("flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br font-music text-5xl font-black transition group-hover:scale-[1.02]", colorOf(c.id))}>
                       {c.photoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -187,8 +196,8 @@ export default async function MusicPage({ searchParams }: { searchParams: Promis
                     <p className="text-sm text-white/50">{c.genre} · {c.type === "GRUP" ? "Grup" : "Solo"} · {c.district}</p>
                   </Link>
                   <div className="mt-4">
-                    <div className="mb-1 flex justify-between text-xs text-white/60"><span>{c._count.votes} oy</span><span>%{pct(c._count.votes, totalVotes)}</span></div>
-                    <div className="h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-400" style={{ width: `${pct(c._count.votes, totalVotes)}%` }} /></div>
+                    <div className="mb-1 flex justify-between text-xs text-white/60"><span>{(c.votes ?? 0)} oy</span><span>%{pct((c.votes ?? 0), totalVotes)}</span></div>
+                    <div className="h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-400" style={{ width: `${pct((c.votes ?? 0), totalVotes)}%` }} /></div>
                   </div>
                   <VoteButton contestantId={c.id} name={c.name} className="mt-4" />
                 </div>
@@ -203,7 +212,7 @@ export default async function MusicPage({ searchParams }: { searchParams: Promis
         <h2 className="mb-6 font-music text-2xl font-bold uppercase">Yarışmacılar</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {comp.contestants.map((c) => (
-            <Link key={c.id} href={`/muzik/yarismaci/${c.slug}`} className={cn("group rounded-2xl bg-white/[0.03] p-3 ring-1 ring-white/10 transition hover:bg-white/[0.08]", c.status === "ELIMINATED" && "opacity-50 hover:opacity-100")}>
+            <Link key={c.id} href={`/muzik/yarismaci?s=${c.slug}`} className={cn("group rounded-2xl bg-white/[0.03] p-3 ring-1 ring-white/10 transition hover:bg-white/[0.08]", c.status === "ELIMINATED" && "opacity-50 hover:opacity-100")}>
               <div className={cn("flex aspect-square items-center justify-center rounded-xl bg-gradient-to-br font-music text-3xl font-black", colorOf(c.id), c.status === "ELIMINATED" && "grayscale")}>{initials(c.name)}</div>
               <p className="mt-3 truncate text-sm font-bold">{c.name}</p>
               <p className="truncate text-xs text-white/50">{c.genre}</p>
@@ -218,8 +227,8 @@ export default async function MusicPage({ searchParams }: { searchParams: Promis
         <div className="rounded-3xl bg-white/[0.03] p-6 ring-1 ring-white/10">
           <h2 className="mb-5 flex items-center gap-2 font-music text-xl font-bold uppercase"><Gavel className="h-5 w-5 text-fuchsia-300" /> Jüri</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            {comp.jury.map((j) => (
-              <div key={j.id} className="flex items-center gap-3">
+            {comp.jury.map((j, ji) => (
+              <div key={ji} className="flex items-center gap-3">
                 <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-cyan-500 font-bold">{initials(j.name)}</span>
                 <div><p className="font-semibold">{j.name}</p><p className="text-xs text-white/50">{j.title}</p></div>
               </div>
@@ -241,7 +250,7 @@ export default async function MusicPage({ searchParams }: { searchParams: Promis
               <p className="mt-1 text-sm text-white/60">{comp.description}</p>
               {period && <p className="mt-2 text-sm text-pink-200">{period.title} — {periodState(period) === "OPEN" ? "başvurular açık!" : `${formatDate(period.startDate)} tarihinde açılıyor.`}</p>}
             </div>
-            <Link href={period ? `/basvuru/${period.slug}` : "/basvuru"} className="btn shrink-0 bg-white px-6 py-3 text-[#0b0614] hover:bg-fuchsia-100">Başvuru Bilgileri</Link>
+            <Link href={period ? `/basvuru/detay?s=${period.slug}` : "/basvuru"} className="btn shrink-0 bg-white px-6 py-3 text-[#0b0614] hover:bg-fuchsia-100">Başvuru Bilgileri</Link>
           </div>
         </div>
       </section>

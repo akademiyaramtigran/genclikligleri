@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/Header";
-import { logoutAction } from "./actions";
+import { useRouter } from "next/navigation";
+import { adminLogout } from "./AdminContext";
 
 type Item = { href: string; label: string; icon: typeof Trophy; badge?: number };
 type Group = { title: string; unit?: "SPOR" | "MUZIK" | "TIYATRO"; superOnly?: boolean; items: Item[] };
@@ -17,6 +18,7 @@ type Group = { title: string; unit?: "SPOR" | "MUZIK" | "TIYATRO"; superOnly?: b
 export function AdminNav({ user, counts }: { user: { name: string; role: string; scope: string }; counts: { pending: number; messages: number } }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const router = useRouter();
   const groups: Group[] = [
     { title: "Genel", items: [
       { href: "/yonetim", label: "Pano", icon: LayoutDashboard },
@@ -79,7 +81,7 @@ export function AdminNav({ user, counts }: { user: { name: string; role: string;
         </div>
         <Link href="/yonetim/profil" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white"><KeyRound className="h-4 w-4" /> Şifre Değiştir</Link>
         <Link href="/" target="_blank" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white"><ExternalLink className="h-4 w-4" /> Siteyi Görüntüle</Link>
-        <form action={logoutAction}><button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white"><LogOut className="h-4 w-4" /> Çıkış Yap</button></form>
+        <form onSubmit={async (e) => { e.preventDefault(); await adminLogout(); router.replace("/yonetim/giris"); }}><button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white"><LogOut className="h-4 w-4" /> Çıkış Yap</button></form>
       </div>
     </nav>
   );

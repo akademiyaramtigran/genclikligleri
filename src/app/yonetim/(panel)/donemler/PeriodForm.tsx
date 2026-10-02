@@ -1,15 +1,18 @@
-import type { ApplicationPeriod } from "@prisma/client";
-import { db } from "@/lib/db";
-import { CATEGORIES, DEFAULT_DOCS, SPORTS, type RequiredDoc } from "@/lib/constants";
-import { parseJson, toDateTimeLocal } from "@/lib/utils";
+"use client";
+
+import type { Period } from "@/lib/types";
+import { getLeagues } from "@/lib/data";
+import { useData } from "@/lib/hooks";
+import { CATEGORIES, DEFAULT_DOCS, SPORTS } from "@/lib/constants";
+import { toDateTimeLocal } from "@/lib/utils";
 import { AdminForm } from "@/components/admin/AdminForm";
 import { CheckField, FormGrid, Panel, SelectField, TextArea, TextField } from "@/components/admin/fields";
 import { savePeriod } from "@/actions/genel";
 
-export async function PeriodForm({ period, category }: { period?: ApplicationPeriod; category?: string }) {
-  const leagues = await db.league.findMany({ include: { season: true }, orderBy: { createdAt: "desc" } });
+export function PeriodForm({ period, category }: { period?: Period; category?: string }) {
+  const leagues = useData(getLeagues, []).data ?? [];
   const cat = (period?.category ?? category ?? "SPOR") as keyof typeof DEFAULT_DOCS;
-  const docs = period ? parseJson<RequiredDoc[]>(period.requiredDocuments, []) : DEFAULT_DOCS[cat];
+  const docs = period ? period.requiredDocuments ?? [] : DEFAULT_DOCS[cat];
   const docsText = docs.map((d) => [d.label, d.required ? "zorunlu" : "isteğe bağlı", d.hint].filter(Boolean).join(" | ")).join("\n");
   return (
     <AdminForm action={savePeriod} submitLabel={period ? "Değişiklikleri Kaydet" : "Dönemi Oluştur"}>
@@ -23,7 +26,7 @@ export async function PeriodForm({ period, category }: { period?: ApplicationPer
               <SelectField label="Branş (spor)" name="sport" defaultValue={period?.sport} empty="Tüm branşlar / seçilecek" options={Object.fromEntries(Object.values(SPORTS).map((s) => [s.key, `${s.emoji} ${s.label}`]))} />
               <SelectField label="Kategori (spor)" name="gender" defaultValue={period?.gender} empty="Erkek & Kadın" options={{ ERKEK: "Erkekler", KADIN: "Kadınlar" }} />
             </FormGrid>
-            <SelectField label="Bağlı Lig (isteğe bağlı)" name="leagueId" defaultValue={period?.leagueId} empty="—" options={leagues.map((l) => ({ value: l.id, label: `${l.name} (${l.season.name})` }))} hint="Onaylanan takımlar varsayılan olarak bu lige eklenir." />
+            <SelectField key={leagues.length} label="Bağlı Lig (isteğe bağlı)" name="leagueId" defaultValue={period?.leagueId} empty="—" options={leagues.map((l) => ({ value: l.id, label: `${l.name} (${l.seasonName})` }))} hint="Onaylanan takımlar varsayılan olarak bu lige eklenir." />
             <FormGrid>
               <TextField label="Başlangıç" name="startDate" type="datetime-local" required defaultValue={toDateTimeLocal(period?.startDate)} />
               <TextField label="Bitiş" name="endDate" type="datetime-local" required defaultValue={toDateTimeLocal(period?.endDate)} />

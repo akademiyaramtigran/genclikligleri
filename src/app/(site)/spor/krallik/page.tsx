@@ -1,21 +1,32 @@
-import type { Metadata } from "next";
+"use client";
+
 import { Crown } from "lucide-react";
 import { SPORT_LIST, sportBySlug, genderBySlug } from "@/lib/constants";
-import { getLeaders } from "@/lib/stats";
+import { getActiveLeagues } from "@/lib/data";
+import { useData, useTitle } from "@/lib/hooks";
+import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { cn } from "@/lib/utils";
 import { PageHero, Avatar } from "@/components/ui";
 import { FilterChips } from "@/components/FilterBar";
 import { GenderSwitch, LeaderTable } from "@/components/sport";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Krallık Yarışı", description: "Gol krallığı, sayı krallığı, asist ve diğer bireysel istatistik liderleri." };
 
-export default async function KrallikPage({ searchParams }: { searchParams: Promise<{ brans?: string; cinsiyet?: string }> }) {
-  const sp = await searchParams;
+export default function KrallikPage() {
+  return <Suspended><Inner /></Suspended>;
+}
+
+function Inner() {
+  useTitle("Krallık Yarışı");
+  const sp = { brans: useParam("brans"), cinsiyet: useParam("cinsiyet") };
   const sport = sportBySlug(sp.brans ?? "futbol") ?? SPORT_LIST[0]!;
   const gender = genderBySlug(sp.cinsiyet);
-  const boards = sport.events.filter((e) => e.leaderboard);
-  const data = await Promise.all(boards.map(async (b) => ({ b, rows: await getLeaders(b.key === sport.scoringEvents[0] ? sport.scoringEvents : [b.key], { sport: sport.key, gender }, 15) })));
+  const { data: leagues, error } = useData(getActiveLeagues, []);
+  if (error) return <ErrorBox message={error} />;
+  if (!leagues) return <PageLoader />;
+  const ls = leagues.filter((l) => l.sport === sport.key && l.gender === gender);
+  const merge = (key: string) => ls.flatMap((l) => l.summary?.leaders?.[key] ?? []).sort((x, y) => y.total - x.total).slice(0, 15);
+  const data = sport.events.filter((e) => e.leaderboard).map((b) => ({ b, rows: merge(b.key) }));
   const [main, ...rest] = data;
   const podium = main?.rows.slice(0, 3) ?? [];
 
@@ -28,7 +39,7 @@ export default async function KrallikPage({ searchParams }: { searchParams: Prom
       </PageHero>
       <div className="container-x py-10">
         <div className="mb-8">
-          <FilterChips name="brans" basePath="/spor/krallik" params={{ brans: sp.brans, cinsiyet: sp.cinsiyet }} value={sport.slug} allLabel={null} options={SPORT_LIST.map((s) => ({ value: s.slug, label: `${s.emoji} ${s.label}` }))} />
+          <FilterChips name="brans" basePath="/spor/krallik" params={sp} value={sport.slug} allLabel={null} options={SPORT_LIST.map((s) => ({ value: s.slug, label: `${s.emoji} ${s.label}` }))} />
         </div>
 
         {podium.length > 0 && (
@@ -39,7 +50,7 @@ export default async function KrallikPage({ searchParams }: { searchParams: Prom
                 if (!p) return <div key={i} />;
                 const rank = i === 1 ? 1 : i === 0 ? 2 : 3;
                 return (
-                  <Link key={p.playerId} href={`/spor/oyuncu/${p.slug}`} className={cn("group relative overflow-hidden rounded-3xl p-6 text-center text-white shadow-xl transition hover:-translate-y-1", rank === 1 ? "bg-gradient-to-b from-amber-400 to-amber-700 sm:pb-12" : rank === 2 ? "bg-gradient-to-b from-slate-400 to-slate-700" : "bg-gradient-to-b from-orange-600 to-orange-900", rank === 1 ? "order-first sm:order-none" : "")}>
+                  <Link key={p.playerId} href={`/spor/oyuncu?s=${p.slug}`} className={cn("group relative overflow-hidden rounded-3xl p-6 text-center text-white shadow-xl transition hover:-translate-y-1", rank === 1 ? "bg-gradient-to-b from-amber-400 to-amber-700 sm:pb-12" : rank === 2 ? "bg-gradient-to-b from-slate-400 to-slate-700" : "bg-gradient-to-b from-orange-600 to-orange-900", rank === 1 ? "order-first sm:order-none" : "")}>
                     <span className="absolute right-4 top-2 font-display text-6xl font-bold opacity-25">{rank}</span>
                     <Avatar name={p.name} src={p.photoUrl} size={rank === 1 ? 96 : 76} color={p.teamColor} className="mx-auto ring-4 ring-white/40" />
                     <p className="mt-4 font-display text-xl font-semibold uppercase">{p.name}</p>

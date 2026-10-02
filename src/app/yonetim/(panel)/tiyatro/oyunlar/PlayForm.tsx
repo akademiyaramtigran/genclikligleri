@@ -1,14 +1,18 @@
-import type { TheatrePlay } from "@prisma/client";
-import { db } from "@/lib/db";
+"use client";
+
+import type { TheatrePlay } from "@/lib/types";
+import { getFestivals, getGroups } from "@/lib/data";
+import { useData } from "@/lib/hooks";
 import { THEATRE_GENRES } from "@/lib/constants";
-import { parseJson } from "@/lib/utils";
 import { AdminForm } from "@/components/admin/AdminForm";
 import { CheckField, FileField, FormGrid, SelectField, TextArea, TextField } from "@/components/admin/fields";
 import { savePlay } from "@/actions/kultur";
 
-export async function PlayForm({ play }: { play?: TheatrePlay }) {
-  const [fests, groups] = await Promise.all([db.theatreFestival.findMany({ orderBy: { startDate: "desc" } }), db.theatreGroup.findMany({ orderBy: { name: "asc" } })]);
-  const cast = parseJson<{ name: string; role: string }[]>(play?.cast, []).map((c) => `${c.name} | ${c.role}`).join("\n");
+export function PlayForm({ play }: { play?: TheatrePlay }) {
+  const { data } = useData(async () => ({ fests: (await getFestivals()).sort((a, b) => b.startDate.getTime() - a.startDate.getTime()), groups: await getGroups() }), []);
+  if (!data) return null;
+  const { fests, groups } = data;
+  const cast = (play?.cast ?? []).map((c) => `${c.name} | ${c.role}`).join("\n");
   return (
     <AdminForm action={savePlay} submitLabel={play ? "Kaydet" : "Oyunu Ekle"}>
       {play && <input type="hidden" name="id" value={play.id} />}

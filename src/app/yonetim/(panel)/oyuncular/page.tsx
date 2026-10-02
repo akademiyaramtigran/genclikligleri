@@ -1,24 +1,35 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import { Search } from "lucide-react";
-import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { getPlayers, teamMap } from "@/lib/data";
+import { useData } from "@/lib/hooks";
+import { RequireUnit } from "../../AdminContext";
+import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { PLAYER_STATUS, sportDef } from "@/lib/constants";
 import { age } from "@/lib/utils";
 import { Avatar, StatusBadge } from "@/components/ui";
 import { AdminHeader } from "@/components/admin/fields";
 import { Pagination } from "@/components/FilterBar";
 
-export const metadata: Metadata = { title: "Oyuncular" };
 const PER = 40;
 
-export default async function PlayersAdmin({ searchParams }: { searchParams: Promise<{ q?: string; sayfa?: string }> }) {
-  await requireUser("SPOR");
-  const sp = await searchParams;
-  const page = Math.max(1, Number(sp.sayfa) || 1);
-  const q = sp.q?.trim();
-  const where = q ? { OR: [{ firstName: { contains: q } }, { lastName: { contains: q } }, { licenseNo: { contains: q } }, { team: { name: { contains: q } } }] } : {};
-  const [total, players] = await Promise.all([db.player.count({ where }), db.player.findMany({ where, include: { team: true }, orderBy: [{ lastName: "asc" }], skip: (page - 1) * PER, take: PER })]);
+export default function PlayersAdmin() {
+  return <RequireUnit unit="SPOR"><Suspended><Inner /></Suspended></RequireUnit>;
+}
+
+function Inner() {
+  const q = useParam("q")?.trim();
+  const page = Math.max(1, Number(useParam("sayfa")) || 1);
+  const { data, error } = useData(async () => ({ players: await getPlayers(), teams: await teamMap() }), []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const needle = q?.toLocaleLowerCase("tr-TR");
+  const all = data.players.map((p) => ({ ...p, team: p.teamId ? data.teams.get(p.teamId) : undefined }))
+    .filter((p) => !needle || `${p.firstName} ${p.lastName} ${p.licenseNo ?? ""} ${p.team?.name ?? ""}`.toLocaleLowerCase("tr-TR").includes(needle))
+    .sort((a, b) => a.lastName.localeCompare(b.lastName, "tr"));
+  const total = all.length;
+  const players = all.slice((page - 1) * PER, page * PER);
   return (
     <>
       <AdminHeader title="Oyuncular" description={`${total} oyuncu`} actions={<Link href="/yonetim/oyuncular/yeni" className="btn-primary">+ Yeni Oyuncu</Link>} />
@@ -32,7 +43,7 @@ export default async function PlayersAdmin({ searchParams }: { searchParams: Pro
           <tbody>
             {players.map((p) => (
               <tr key={p.id} className="hover:bg-basalt-50">
-                <td><Link href={`/yonetim/oyuncular/${p.id}`} className="flex items-center gap-2 font-semibold hover:text-dicle-700"><Avatar name={`${p.firstName} ${p.lastName}`} src={p.photoUrl} size={28} color={p.team?.primaryColor} /> {p.firstName} {p.lastName}</Link></td>
+                <td><Link href={`/yonetim/oyuncular/duzenle?id=${p.id}`} className="flex items-center gap-2 font-semibold hover:text-dicle-700"><Avatar name={`${p.firstName} ${p.lastName}`} src={p.photoUrl} size={28} color={p.team?.primaryColor} /> {p.firstName} {p.lastName}</Link></td>
                 <td className="text-basalt-600">{p.team ? `${sportDef(p.team.sport).emoji} ${p.team.name}` : "—"}</td>
                 <td>{p.position ?? "—"}</td>
                 <td className="tabular-nums">{p.jerseyNumber ?? "—"}</td>

@@ -1,66 +1,66 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Drama, MapPin, Mic2, Music2, Sparkles, Trophy, Users, Shield, Video as VideoIcon } from "lucide-react";
-import { db } from "@/lib/db";
-import { SPORT_LIST, SPORTS, CATEGORIES, ANNOUNCEMENT_CATEGORIES } from "@/lib/constants";
-import { computeStandings } from "@/lib/standings";
-import { getScorers } from "@/lib/stats";
+import { where } from "firebase/firestore";
+import { countOf, getActiveLeagues, getAnnouncements, getCompetitionData, getCurrentCompetition, getCurrentFestival, getFestivalPlays, getPeriods, getSeasonMatches, getVideos } from "@/lib/data";
+import { useData } from "@/lib/hooks";
+import { SPORT_LIST, SPORTS, CATEGORIES, ANNOUNCEMENT_CATEGORIES, sportDef } from "@/lib/constants";
 import { periodState, daysLeft } from "@/lib/periods";
 import { cn, formatDate, formatShortDate, formatTime, formatWeekday } from "@/lib/utils";
 import { Badge, SectionHeader, TeamCrest, Avatar } from "@/components/ui";
 import { MatchCard } from "@/components/sport";
 import { Countdown } from "@/components/Countdown";
 import { YouTubeThumb } from "@/components/YouTubeEmbed";
+import { ErrorBox, PageLoader } from "@/components/client";
 
-export default async function HomePage() {
-  const now = new Date();
-  const teamSel = { select: { name: true, shortName: true, slug: true, logoUrl: true, primaryColor: true, secondaryColor: true } };
-
-  const [teamCount, playerCount, matchCount, leagues, recent, upcoming, periods, competition, festival, announcements, videos] = await Promise.all([
-    db.team.count({ where: { status: "ACTIVE" } }),
-    db.player.count({ where: { status: { not: "PASSIVE" } } }),
-    db.match.count({ where: { status: "FINISHED" } }),
-    db.league.findMany({
-      where: { season: { isActive: true } },
-      include: {
-        entries: { include: { team: true } },
-        matches: { where: { status: "FINISHED" }, select: { homeTeamId: true, awayTeamId: true, homeScore: true, awayScore: true, date: true } },
-      },
-    }),
-    db.match.findMany({ where: { status: "FINISHED" }, orderBy: { date: "desc" }, take: 16, include: { homeTeam: teamSel, awayTeam: teamSel, league: true, venue: true } }),
-    db.match.findMany({ where: { status: { in: ["SCHEDULED", "LIVE"] }, date: { gte: new Date(now.getTime() - 3 * 3_600_000) } }, orderBy: { date: "asc" }, take: 8, include: { homeTeam: teamSel, awayTeam: teamSel, league: true, venue: true } }),
-    db.applicationPeriod.findMany({ where: { isPublished: true, endDate: { gte: now } }, orderBy: { startDate: "asc" }, take: 4 }),
-    db.musicCompetition.findFirst({
-      where: { isCurrent: true },
-      include: {
-        rounds: { orderBy: { order: "asc" }, include: { venue: true, performances: { include: { contestant: true }, orderBy: { order: "asc" } } } },
-        _count: { select: { contestants: true } },
-      },
-    }),
-    db.theatreFestival.findFirst({
-      where: { isCurrent: true },
-      include: { plays: { include: { group: true, shows: { include: { venue: true }, orderBy: { date: "asc" } } } } },
-    }),
-    db.announcement.findMany({ where: { isPublished: true }, orderBy: [{ isPinned: "desc" }, { publishedAt: "desc" }], take: 4 }),
-    db.video.findMany({ orderBy: [{ isFeatured: "desc" }, { publishedAt: "desc" }], take: 4 }),
+async function loadHome() {
+  const [teamCount, playerCount, leagues, matches, periods, competition, festival, announcements, videos] = await Promise.all([
+    countOf("teams", where("status", "==", "ACTIVE")).catch(() => 0),
+    countOf("players").catch(() => 0),
+    getActiveLeagues(),
+    getSeasonMatches(),
+    getPeriods(),
+    getCurrentCompetition(),
+    getCurrentFestival(),
+    getAnnouncements(),
+    getVideos(),
   ]);
+  const [music, plays] = await Promise.all([
+    competition ? getCompetitionData(competition.id) : Promise.resolve(null),
+    festival ? getFestivalPlays(festival.id) : Promise.resolve([]),
+  ]);
+  return { teamCount, playerCount, leagues, matches, periods, competition, music, festival, plays, announcements, videos };
+}
+
+export default function HomePage() {
+  const { data, error } = useData(loadHome, []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const { teamCount, playerCount, leagues, matches, competition, music, festival, plays } = data;
+  const now = new Date();
+  const matchCount = matches.filter((m) => m.status === "FINISHED").length;
+  const recent = matches.filter((m) => m.status === "FINISHED").sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 16);
+  const upcoming = matches.filter((m) => (m.status === "SCHEDULED" || m.status === "LIVE") && m.date.getTime() >= now.getTime() - 3 * 3_600_000).slice(0, 8);
+  const periods = data.periods.filter((p) => p.endDate >= now).sort((a, b) => a.startDate.getTime() - b.startDate.getTime()).slice(0, 4);
+  const announcements = data.announcements.slice(0, 4);
+  const videos = data.videos.slice(0, 4);
 
   const leagueCards = SPORT_LIST.map((s) => ({
     sport: s,
     byGender: (["ERKEK", "KADIN"] as const).map((g) => {
       const l = leagues.find((x) => x.sport === s.key && x.gender === g);
-      if (!l) return { gender: g, league: null, rows: [] };
-      const rows = computeStandings(l.sport, l.entries.map((e) => ({ ...e.team, penalty: e.penaltyPoints })), l.matches);
-      return { gender: g, league: l, rows: rows.slice(0, 3) };
+      return { gender: g, league: l ?? null, rows: (l?.summary?.standings ?? []).slice(0, 3) };
     }),
   }));
-
-  const scorerHighlights = await Promise.all(
-    SPORT_LIST.map(async (s) => ({ sport: s, erkek: (await getScorers(s.key, { gender: "ERKEK" }, 1))[0], kadin: (await getScorers(s.key, { gender: "KADIN" }, 1))[0] })),
-  );
+  const topOf = (sport: string, gender: string) => leagues.find((l) => l.sport === sport && l.gender === gender)?.summary?.leaders?.[sportDef(sport).scoringEvents[0]!]?.[0];
+  const scorerHighlights = SPORT_LIST.map((s) => ({ sport: s, erkek: topOf(s.key, "ERKEK"), kadin: topOf(s.key, "KADIN") }));
 
   const openPeriod = periods.find((p) => periodState(p) === "OPEN");
-  const nextRound = competition?.rounds.find((r) => r.status !== "COMPLETED");
-  const allShows = festival?.plays.flatMap((p) => p.shows.map((s) => ({ ...s, play: p }))).sort((a, b) => a.date.getTime() - b.date.getTime()) ?? [];
+  const rounds = music?.rounds ?? [];
+  const nextRound = rounds.find((r) => r.status !== "COMPLETED");
+  const contestantsById = new Map((music?.contestants ?? []).map((c) => [c.id, c]));
+  const allShows = plays.flatMap((p) => p.shows.map((s) => ({ ...s, play: p }))).sort((a, b) => a.date.getTime() - b.date.getTime());
   const nextShows = allShows.filter((s) => s.date >= new Date(now.getTime() - 2 * 3_600_000)).slice(0, 3);
 
   return (
@@ -100,7 +100,7 @@ export default async function HomePage() {
               <Mic2 className="absolute -right-4 -top-4 h-32 w-32 text-white/10 transition group-hover:-rotate-12" />
               <p className="eyebrow text-fuchsia-200">Müzik Yarışması</p>
               <h3 className="mt-2 font-music text-2xl font-bold uppercase">{competition ? `${competition.name} ${competition.edition}` : "Genç Sesler"}</h3>
-              <p className="mt-1 text-sm text-white/70">{competition ? `${competition._count.contestants} yarışmacı · ${nextRound ? `Sıradaki: ${nextRound.name}` : "Tamamlandı"}` : "Yakında"}</p>
+              <p className="mt-1 text-sm text-white/70">{competition ? `${music?.contestants.length ?? 0} yarışmacı · ${nextRound ? `Sıradaki: ${nextRound.name}` : "Tamamlandı"}` : "Yakında"}</p>
               {nextRound && <p className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold"><CalendarDays className="h-3.5 w-3.5" /> {formatDate(nextRound.date)}</p>}
               <ArrowRight className="absolute bottom-6 right-6 h-6 w-6 transition group-hover:translate-x-1" />
             </Link>
@@ -108,7 +108,7 @@ export default async function HomePage() {
               <Drama className="absolute -right-4 -top-4 h-32 w-32 text-amber-200/10 transition group-hover:rotate-12" />
               <p className="eyebrow text-amber-300">Festival</p>
               <h3 className="mt-2 font-serif text-3xl font-bold italic">{festival ? `${festival.edition} Tiyatro Festivali` : "Tiyatro Festivali"}</h3>
-              <p className="mt-1 text-sm text-white/70">{festival ? `${festival.plays.length} oyun · ${formatShortDate(festival.startDate)} – ${formatShortDate(festival.endDate)}` : "Yakında"}</p>
+              <p className="mt-1 text-sm text-white/70">{festival ? `${plays.length} oyun · ${formatShortDate(festival.startDate)} – ${formatShortDate(festival.endDate)}` : "Yakında"}</p>
               {festival?.theme && <p className="mt-6 inline-flex rounded-full bg-amber-400/15 px-3 py-1 text-xs font-semibold text-amber-200">“{festival.theme}”</p>}
               <ArrowRight className="absolute bottom-6 right-6 h-6 w-6 transition group-hover:translate-x-1" />
             </Link>
@@ -137,12 +137,12 @@ export default async function HomePage() {
             <div className="mask-fade-x overflow-hidden py-3">
               <div className="flex w-max animate-marquee gap-8 hover:[animation-play-state:paused]">
                 {[...recent, ...recent].map((m, i) => (
-                  <Link key={`${m.id}-${i}`} href={`/spor/mac/${m.id}`} className="flex items-center gap-2 whitespace-nowrap text-sm text-white/80 hover:text-white">
-                    <span className="text-xs">{SPORTS[m.league.sport as keyof typeof SPORTS]?.emoji}</span>
-                    <span className={cn("rounded px-1.5 text-[10px] font-bold", m.league.gender === "KADIN" ? "bg-rose-500/20 text-rose-300" : "bg-sky-500/20 text-sky-300")}>{m.league.gender === "KADIN" ? "K" : "E"}</span>
-                    <span>{m.homeTeam.shortName}</span>
+                  <Link key={`${m.id}-${i}`} href={`/spor/mac?id=${m.id}`} className="flex items-center gap-2 whitespace-nowrap text-sm text-white/80 hover:text-white">
+                    <span className="text-xs">{SPORTS[m.sport as keyof typeof SPORTS]?.emoji}</span>
+                    <span className={cn("rounded px-1.5 text-[10px] font-bold", m.gender === "KADIN" ? "bg-rose-500/20 text-rose-300" : "bg-sky-500/20 text-sky-300")}>{m.gender === "KADIN" ? "K" : "E"}</span>
+                    <span>{m.home.shortName}</span>
                     <span className="rounded bg-white/10 px-2 font-display font-bold tabular-nums">{m.homeScore}-{m.awayScore}</span>
-                    <span>{m.awayTeam.shortName}</span>
+                    <span>{m.away.shortName}</span>
                   </Link>
                 ))}
               </div>
@@ -164,7 +164,7 @@ export default async function HomePage() {
               </div>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <Countdown to={openPeriod.endDate} label="Son başvuruya" />
-                <Link href={`/basvuru/${openPeriod.slug}`} className="btn bg-white px-6 py-3 text-emerald-800 hover:bg-emerald-50">Hemen Başvur <ArrowRight className="h-4 w-4" /></Link>
+                <Link href={`/basvuru/detay?s=${openPeriod.slug}`} className="btn bg-white px-6 py-3 text-emerald-800 hover:bg-emerald-50">Hemen Başvur <ArrowRight className="h-4 w-4" /></Link>
               </div>
             </div>
           </div>
@@ -197,13 +197,13 @@ export default async function HomePage() {
                   <div key={gender} className="p-4">
                     <div className="mb-2 flex items-center justify-between">
                       <span className={cn("text-xs font-bold uppercase tracking-wider", gender === "KADIN" ? "text-rose-600" : "text-sky-600")}>{gender === "KADIN" ? "Kadınlar" : "Erkekler"}</span>
-                      {league && <Link href={`/spor/lig/${league.slug}`} className="text-xs font-medium text-basalt-500 hover:text-basalt-900">Tablo →</Link>}
+                      {league && <Link href={`/spor/lig?s=${league.slug}`} className="text-xs font-medium text-basalt-500 hover:text-basalt-900">Tablo →</Link>}
                     </div>
                     {rows.length === 0 ? <p className="text-sm text-basalt-400">Lig henüz başlamadı</p> : (
                       <ol className="space-y-1.5">
                         {rows.map((r) => (
                           <li key={r.teamId}>
-                            <Link href={`/spor/takim/${r.slug}`} className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:bg-basalt-50">
+                            <Link href={`/spor/takim?s=${r.slug}`} className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm hover:bg-basalt-50">
                               <span className="w-4 text-center font-display font-bold text-basalt-400">{r.position}</span>
                               <TeamCrest team={r} size={22} />
                               <span className="flex-1 truncate font-medium">{r.name}</span>
@@ -230,7 +230,7 @@ export default async function HomePage() {
               <p className="text-xs font-bold uppercase tracking-wider text-basalt-500">{sport.emoji} {sport.label} · {sport.scorerTitle}</p>
               {[erkek, kadin].map((p, i) =>
                 p ? (
-                  <Link key={p.playerId} href={`/spor/oyuncu/${p.slug}`} className="mt-4 flex items-center gap-3 rounded-xl p-1 hover:bg-basalt-50">
+                  <Link key={p.playerId} href={`/spor/oyuncu?s=${p.slug}`} className="mt-4 flex items-center gap-3 rounded-xl p-1 hover:bg-basalt-50">
                     <Avatar name={p.name} src={p.photoUrl} size={44} color={p.teamColor} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">{p.name}</p>
@@ -275,12 +275,12 @@ export default async function HomePage() {
               {nextRound && nextRound.performances.length > 0 && (
                 <div className="grid grid-cols-2 gap-3">
                   {nextRound.performances.map((p, i) => (
-                    <Link key={p.id} href={`/muzik/yarismaci/${p.contestant.slug}`} className="group rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 transition hover:bg-white/10 hover:shadow-glow">
+                    <Link key={p.contestantId} href={`/muzik/yarismaci?s=${p.contestantSlug}`} className="group rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 transition hover:bg-white/10 hover:shadow-glow">
                       <div className="flex h-24 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-600/40 to-cyan-500/20 font-music text-3xl font-black">
-                        {p.contestant.name.split(" ").map((x) => x[0]).slice(0, 2).join("")}
+                        {p.contestantName.split(" ").map((x) => x[0]).slice(0, 2).join("")}
                       </div>
-                      <p className="mt-3 truncate font-semibold">{p.contestant.name}</p>
-                      <p className="truncate text-xs text-white/50">{p.contestant.genre} · #{i + 1}</p>
+                      <p className="mt-3 truncate font-semibold">{p.contestantName}</p>
+                      <p className="truncate text-xs text-white/50">{contestantsById.get(p.contestantId)?.genre} · #{i + 1}</p>
                     </Link>
                   ))}
                 </div>
@@ -310,14 +310,14 @@ export default async function HomePage() {
                 <p className="text-xs font-bold uppercase tracking-widest text-amber-200/70">Sıradaki Gösterimler</p>
                 {nextShows.length === 0 && <p className="text-white/60">Festival programı tamamlandı.</p>}
                 {nextShows.map((s) => (
-                  <Link key={s.id} href={`/tiyatro/oyun/${s.play.slug}`} className="flex items-center gap-4 rounded-2xl bg-black/25 p-4 ring-1 ring-amber-200/10 transition hover:bg-black/40">
+                  <Link key={s.id} href={`/tiyatro/oyun?s=${s.play.slug}`} className="flex items-center gap-4 rounded-2xl bg-black/25 p-4 ring-1 ring-amber-200/10 transition hover:bg-black/40">
                     <div className="w-16 shrink-0 text-center">
                       <p className="font-serif text-3xl font-bold leading-none text-amber-300">{new Date(s.date).toLocaleDateString("tr-TR", { day: "numeric", timeZone: "Europe/Istanbul" })}</p>
                       <p className="text-[10px] uppercase tracking-wider text-white/60">{formatWeekday(s.date).slice(0, 3)} · {formatTime(s.date)}</p>
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-serif text-lg font-semibold">{s.play.title}</p>
-                      <p className="truncate text-sm text-white/60">{s.play.group.name} · {s.venue?.name}</p>
+                      <p className="truncate text-sm text-white/60">{s.play.groupName} · {s.venueName}</p>
                     </div>
                     <Badge tone="amber">{s.play.genre}</Badge>
                   </Link>
@@ -337,7 +337,7 @@ export default async function HomePage() {
               const st = periodState(p);
               const cat = CATEGORIES[p.category as keyof typeof CATEGORIES];
               return (
-                <Link key={p.id} href={`/basvuru/${p.slug}`} className="card group flex flex-col p-5 transition hover:-translate-y-0.5 hover:shadow-lg">
+                <Link key={p.id} href={`/basvuru/detay?s=${p.slug}`} className="card group flex flex-col p-5 transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="flex items-center justify-between">
                     <Badge tone={p.category === "SPOR" ? "green" : p.category === "MUZIK" ? "fuchsia" : "amber"}>{cat?.label}</Badge>
                     <Badge tone={st === "OPEN" ? "green" : "amber"} dot={st === "OPEN"}>{st === "OPEN" ? `${daysLeft(p.endDate)} gün kaldı` : `${formatShortDate(p.startDate)}'da açılıyor`}</Badge>
@@ -372,7 +372,7 @@ export default async function HomePage() {
           <SectionHeader eyebrow="Duyurular" title="Haberler" action={<Link href="/duyurular" className="btn-outline">Tümü</Link>} />
           <div className="card divide-y divide-basalt-100">
             {announcements.map((a) => (
-              <Link key={a.id} href={`/duyurular/${a.slug}`} className="block p-4 transition hover:bg-basalt-50">
+              <Link key={a.id} href={`/duyurular/oku?s=${a.slug}`} className="block p-4 transition hover:bg-basalt-50">
                 <div className="flex items-center gap-2 text-xs text-basalt-500">
                   {a.isPinned && <Badge tone="red">Önemli</Badge>}
                   <span className="font-semibold uppercase tracking-wider">{ANNOUNCEMENT_CATEGORIES[a.category]}</span>

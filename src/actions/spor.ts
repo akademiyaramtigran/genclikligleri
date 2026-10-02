@@ -1,124 +1,146 @@
-"use server";
+"use client";
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
-import { requireUser, logActivity } from "@/lib/auth";
-import { saveImage, UploadError } from "@/lib/storage";
-import { uniqueSlug } from "@/lib/slug";
-import { type ActionResult, ok, fail, str, optStr, int, bool, dt, dateOnly, file, prismaMessage } from "@/lib/form";
+import { deleteDoc, getDocs, query, collection, where, updateDoc, setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { fdb } from "@/lib/firebase";
+import { getAll, getOne } from "@/lib/data";
+import { requireAdmin, logActivity, uniqueId, ref, newRef, changed, rebuildLeague, batchWrite, batchDelete, teamRef } from "@/lib/admin";
+import { compressImage } from "@/lib/files";
+import { type ActionResult, ok, fail, str, optStr, int, bool, dt, dateOnly, errMessage } from "@/lib/form";
 import { SPORTS, type SportKey } from "@/lib/constants";
+import { slugify } from "@/lib/utils";
+import type { League, Match, MatchEvent, Player, Season, Team, Venue } from "@/lib/types";
 
 const UNIT = "SPOR" as const;
-const refresh = () => revalidatePath("/", "layout");
 
-async function imageField(fd: FormData, name: string, current: string | null | undefined) {
+export async function imageField(fd: FormData, name: string, current: string | null | undefined, maxSide: number) {
   if (bool(fd, `${name}_remove`)) return null;
-  const f = file(fd, name);
-  if (!f) return current ?? null;
-  return saveImage(f);
+  const f = fd.get(name);
+  if (f instanceof File && f.size > 0) return compressImage(f, maxSide);
+  return current ?? null;
 }
+
+const wrap = (fn: () => Promise<ActionResult>) => fn().catch((e) => fail(errMessage(e)));
 
 // ───────────── Sezon ─────────────
 
-export async function saveSeason(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser(UNIT);
+export const saveSeason = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin(UNIT);
   const id = str(fd, "id");
   const name = str(fd, "name", 30);
-  const startDate = dateOnly(fd, "startDate");
-  const endDate = dateOnly(fd, "endDate");
+  const startDate = dateOnly(fd, "startDate"), endDate = dateOnly(fd, "endDate");
   if (!name || !startDate || !endDate) return fail("Sezon adı ve tarihleri zorunludur.");
   const isActive = bool(fd, "isActive");
-  try {
-    if (isActive) await db.season.updateMany({ data: { isActive: false } });
-    const s = id ? await db.season.update({ where: { id }, data: { name, startDate, endDate, isActive } }) : await db.season.create({ data: { name, startDate, endDate, isActive } });
-    await logActivity(user.id, id ? "GUNCELLE" : "OLUSTUR", "Sezon", s.id, name);
-  } catch (e) { return fail(prismaMessage(e)); }
-  refresh();
+  const sid = id || slugify(name);
+  if (isActive) {
+    const seasons = await getAll<Season>("seasons");
+    await batchWrite(seasons.filter((s) => s.id !== sid).map((s) => ({ ref: ref("seasons", s.id), data: { isActive: false }, merge: true })));
+    const leagues = await getAll<League>("leagues");
+    await batchWrite(leagues.map((l) => ({ ref: ref("leagues", l.id), data: { seasonActive: l.seasonId === sid }, merge: true })));
+  }
+  await setDoc(ref("seasons", sid), { name, startDate, endDate, isActive }, { merge: true });
+  if (id) {
+    const leagues = await getAll<League>("leagues", where("seasonId", "==", sid));
+    await batchWrite(leagues.map((l) => ({ ref: ref("leagues", l.id), data: { seasonName: name, seasonActive: isActive }, merge: true })));
+  }
+  await logActivity(admin, id ? "GUNCELLE" : "OLUSTUR", "Sezon", sid, name);
+  changed();
   return ok(id ? "Sezon güncellendi." : "Sezon oluşturuldu.");
-}
+});
 
 // ───────────── Lig ─────────────
 
-export async function saveLeague(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser(UNIT);
+export const saveLeague = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin(UNIT);
   const id = str(fd, "id");
-  const name = str(fd, "name", 120);
-  const sport = str(fd, "sport");
-  const gender = str(fd, "gender");
-  const seasonId = str(fd, "seasonId");
+  const name = str(fd, "name", 120), sport = str(fd, "sport"), gender = str(fd, "gender"), seasonId = str(fd, "seasonId");
   if (!name || !(sport in SPORTS) || !["ERKEK", "KADIN"].includes(gender) || !seasonId) return fail("Ad, branş, kategori ve sezon zorunludur.");
-  const data = { name, sport, gender, seasonId, ageGroup: str(fd, "ageGroup", 20) || "U-21", status: str(fd, "status") || "PLANNED", description: optStr(fd, "description", 2000), rules: optStr(fd, "rules", 5000) };
-  let newId = id;
-  try {
-    if (id) {
-      await db.league.update({ where: { id }, data });
-    } else {
-      const season = await db.season.findUnique({ where: { id: seasonId } });
-      const slug = await uniqueSlug(`${name} ${season?.name ?? ""}`, async (s) => !!(await db.league.findUnique({ where: { slug: s } })));
-      newId = (await db.league.create({ data: { ...data, slug } })).id;
-    }
-    await logActivity(user.id, id ? "GUNCELLE" : "OLUSTUR", "Lig", newId, name);
-  } catch (e) { return fail(prismaMessage(e)); }
-  refresh();
-  if (!id) redirect(`/yonetim/ligler/${newId}`);
-  return ok("Lig güncellendi.");
-}
+  const season = await getOne<Season>("seasons", seasonId);
+  const data = {
+    name, sport, gender, seasonId, seasonName: season?.name ?? "", seasonActive: !!season?.isActive,
+    ageGroup: str(fd, "ageGroup", 20) || "U-21", status: str(fd, "status") || "PLANNED",
+    description: optStr(fd, "description", 2000), rules: optStr(fd, "rules", 5000),
+  };
+  let lid = id;
+  if (id) await updateDoc(ref("leagues", id), data);
+  else {
+    lid = await uniqueId("leagues", `${name} ${season?.name ?? ""}`);
+    await setDoc(ref("leagues", lid), { ...data, slug: lid, entries: [], summary: null, createdAt: new Date() });
+  }
+  await logActivity(admin, id ? "GUNCELLE" : "OLUSTUR", "Lig", lid, name);
+  changed();
+  return ok(id ? "Lig güncellendi." : "Lig oluşturuldu.", id ? undefined : `/yonetim/ligler/duzenle?id=${lid}`);
+});
 
-export async function deleteLeague(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser(UNIT);
+export const deleteLeague = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin(UNIT);
   const id = str(fd, "id");
-  await db.league.delete({ where: { id } }).catch(() => null);
-  await logActivity(user.id, "SIL", "Lig", id);
-  refresh();
-  redirect("/yonetim/ligler");
-}
+  const matches = await getDocs(query(collection(fdb(), "matches"), where("leagueId", "==", id)));
+  await batchDelete(matches.docs.map((d) => d.ref));
+  const league = await getOne<League>("leagues", id);
+  for (const e of league?.entries ?? []) await updateDoc(ref("teams", e.teamId), { leagueIds: arrayRemove(id) }).catch(() => {});
+  await deleteDoc(ref("leagues", id));
+  await logActivity(admin, "SIL", "Lig", id);
+  changed();
+  return ok("Lig silindi.", "/yonetim/ligler");
+});
 
-export async function addEntry(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  await requireUser(UNIT);
+export const addEntry = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  await requireAdmin(UNIT);
   const leagueId = str(fd, "leagueId");
   const teamIds = fd.getAll("teamId").map(String).filter(Boolean);
   if (!teamIds.length) return fail("Takım seçiniz.");
-  const league = await db.league.findUnique({ where: { id: leagueId } });
+  const league = await getOne<League>("leagues", leagueId);
   if (!league) return fail("Lig bulunamadı.");
-  const teams = await db.team.findMany({ where: { id: { in: teamIds } } });
+  const teams = (await Promise.all(teamIds.map((t) => getOne<Team>("teams", t)))).filter((t): t is Team => !!t);
   const wrong = teams.find((t) => t.sport !== league.sport || t.gender !== league.gender);
   if (wrong) return fail(`${wrong.name} bu ligin branşı/kategorisiyle uyuşmuyor.`);
-  for (const t of teams) await db.leagueEntry.upsert({ where: { leagueId_teamId: { leagueId, teamId: t.id } }, create: { leagueId, teamId: t.id, group: optStr(fd, "group", 10) }, update: {} });
-  refresh();
+  const entries = [...league.entries];
+  for (const t of teams) if (!entries.some((e) => e.teamId === t.id)) entries.push({ teamId: t.id, penaltyPoints: 0, group: optStr(fd, "group", 10) });
+  await updateDoc(ref("leagues", leagueId), { entries });
+  for (const t of teams) await updateDoc(ref("teams", t.id), { leagueIds: arrayUnion(leagueId) });
+  await rebuildLeague(leagueId);
+  changed();
   return ok(`${teams.length} takım lige eklendi.`);
-}
+});
 
-export async function updateEntry(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  await requireUser(UNIT);
-  const id = str(fd, "id");
+export const updateEntry = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  await requireAdmin(UNIT);
+  const leagueId = str(fd, "leagueId"), teamId = str(fd, "teamId");
+  const league = await getOne<League>("leagues", leagueId);
+  if (!league) return fail("Lig bulunamadı.");
+  let entries = league.entries;
   if (str(fd, "remove") === "1") {
-    await db.leagueEntry.delete({ where: { id } });
+    entries = entries.filter((e) => e.teamId !== teamId);
+    await updateDoc(ref("teams", teamId), { leagueIds: arrayRemove(leagueId) }).catch(() => {});
   } else {
-    await db.leagueEntry.update({ where: { id }, data: { penaltyPoints: int(fd, "penaltyPoints") ?? 0, group: optStr(fd, "group", 10) } });
+    entries = entries.map((e) => (e.teamId === teamId ? { ...e, penaltyPoints: int(fd, "penaltyPoints") ?? 0 } : e));
   }
-  refresh();
+  await updateDoc(ref("leagues", leagueId), { entries });
+  await rebuildLeague(leagueId);
+  changed();
   return ok();
-}
+});
 
 /** Çember (round-robin) yöntemiyle fikstür oluşturur */
-export async function generateFixtures(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser(UNIT);
+export const generateFixtures = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin(UNIT);
   const leagueId = str(fd, "leagueId");
   const start = dt(fd, "start");
-  const interval = int(fd, "interval") ?? 7;
-  const gap = int(fd, "gap") ?? 120;
-  const doubleRound = bool(fd, "double");
-  const replace = bool(fd, "replace");
+  const interval = int(fd, "interval") ?? 7, gap = int(fd, "gap") ?? 120;
+  const doubleRound = bool(fd, "double"), replace = bool(fd, "replace");
   if (!start) return fail("Başlangıç tarihi giriniz.");
-  const league = await db.league.findUnique({ where: { id: leagueId }, include: { entries: { include: { team: true } }, _count: { select: { matches: true } } } });
+  const league = await getOne<League>("leagues", leagueId);
   if (!league) return fail("Lig bulunamadı.");
   if (league.entries.length < 2) return fail("Fikstür için en az 2 takım gerekir.");
-  if (league._count.matches > 0 && !replace) return fail("Ligde zaten maç var. Değiştirmek için 'Mevcut planlanmış maçları sil' seçeneğini işaretleyin.");
-  if (replace) await db.match.deleteMany({ where: { leagueId, status: { not: "FINISHED" } } });
+  const existing = await getAll<Match>("matches", where("leagueId", "==", leagueId));
+  if (existing.length && !replace) return fail("Ligde zaten maç var. Değiştirmek için 'Mevcut planlanmış maçları sil' seçeneğini işaretleyin.");
+  if (replace) await batchDelete(existing.filter((m) => m.status !== "FINISHED").map((m) => ref("matches", m.id)));
+  const startRound = replace ? Math.max(0, ...existing.filter((m) => m.status === "FINISHED").map((m) => m.round)) : 0;
 
+  const teams = new Map((await getAll<Team>("teams")).map((t) => [t.id, t]));
+  const venues = new Map((await getAll<Venue>("venues")).map((v) => [v.id, v]));
   const ids: (string | null)[] = league.entries.map((e) => e.teamId);
-  if (ids.length % 2) ids.push(null); // bay
+  if (ids.length % 2) ids.push(null);
   const rounds: [string, string][][] = [];
   const arr = [...ids];
   for (let r = 0; r < arr.length - 1; r++) {
@@ -131,231 +153,270 @@ export async function generateFixtures(_p: ActionResult, fd: FormData): Promise<
     arr.splice(1, 0, arr.pop()!);
   }
   const all = doubleRound ? [...rounds, ...rounds.map((p) => p.map(([a, b]) => [b, a] as [string, string]))] : rounds;
-  const existingRounds = replace ? (await db.match.aggregate({ where: { leagueId }, _max: { round: true } }))._max.round ?? 0 : 0;
-  const venueOf = new Map(league.entries.map((e) => [e.teamId, e.team.venueId]));
-  const data = all.flatMap((pairs, r) =>
-    pairs.map(([home, away], i) => ({
-      leagueId, round: existingRounds + r + 1, homeTeamId: home, awayTeamId: away,
-      date: new Date(start.getTime() + r * interval * 86_400_000 + i * gap * 60_000),
-      venueId: venueOf.get(home) ?? null,
-    })),
+  const ops = all.flatMap((pairs, r) =>
+    pairs.map(([h, a], i) => {
+      const home = teams.get(h)!, away = teams.get(a)!;
+      const venue = home.venueId ? venues.get(home.venueId) : undefined;
+      return {
+        ref: newRef("matches"),
+        data: {
+          leagueId, leagueName: league.name, leagueSlug: league.slug, sport: league.sport, gender: league.gender, round: startRound + r + 1,
+          homeTeamId: h, awayTeamId: a, teamIds: [h, a], home: teamRef(home), away: teamRef(away),
+          date: new Date(start.getTime() + r * interval * 86_400_000 + i * gap * 60_000),
+          venueId: venue?.id ?? null, venueName: venue?.name ?? null, status: "SCHEDULED", homeScore: null, awayScore: null,
+          events: [], playerIds: [],
+        },
+      };
+    }),
   );
-  await db.match.createMany({ data });
-  await db.league.update({ where: { id: leagueId }, data: { status: league.status === "PLANNED" ? "ONGOING" : league.status } });
-  await logActivity(user.id, "FIKSTUR", "Lig", leagueId, `${data.length} maç oluşturuldu`);
-  refresh();
-  return ok(`${all.length} haftalık fikstür oluşturuldu (${data.length} maç).`);
-}
+  await batchWrite(ops);
+  if (league.status === "PLANNED") await updateDoc(ref("leagues", leagueId), { status: "ONGOING" });
+  await rebuildLeague(leagueId);
+  await logActivity(admin, "FIKSTUR", "Lig", leagueId, `${ops.length} maç`);
+  changed();
+  return ok(`${all.length} haftalık fikstür oluşturuldu (${ops.length} maç).`);
+});
 
 // ───────────── Takım ─────────────
 
-export async function saveTeam(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser(UNIT);
+export const saveTeam = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin(UNIT);
   const id = str(fd, "id");
-  const name = str(fd, "name", 120);
-  const sport = str(fd, "sport");
-  const gender = str(fd, "gender");
-  const district = str(fd, "district", 50);
+  const name = str(fd, "name", 120), sport = str(fd, "sport"), gender = str(fd, "gender"), district = str(fd, "district", 50);
   if (!name || !(sport in SPORTS) || !["ERKEK", "KADIN"].includes(gender) || !district) return fail("Ad, branş, kategori ve ilçe zorunludur.");
-  const current = id ? await db.team.findUnique({ where: { id } }) : null;
-  let logoUrl: string | null;
-  try { logoUrl = await imageField(fd, "logo", current?.logoUrl); } catch (e) { return fail(e instanceof UploadError ? e.message : "Logo yüklenemedi."); }
+  const current = id ? await getOne<Team>("teams", id) : null;
+  const logoUrl = await imageField(fd, "logo", current?.logoUrl, 128);
+  const venueId = optStr(fd, "venueId");
+  const venue = venueId ? await getOne<Venue>("venues", venueId) : null;
   const data = {
-    name, sport, gender, district, logoUrl,
+    name, sport, gender, district, logoUrl, venueId, venueName: venue?.name ?? null,
     shortName: (str(fd, "shortName", 4) || name.slice(0, 3)).toLocaleUpperCase("tr-TR"),
     neighborhood: optStr(fd, "neighborhood", 80), primaryColor: str(fd, "primaryColor", 9) || "#0f766e", secondaryColor: str(fd, "secondaryColor", 9) || "#ffffff",
     foundedYear: int(fd, "foundedYear"), coachName: optStr(fd, "coachName", 80), managerName: optStr(fd, "managerName", 80),
-    contactPhone: optStr(fd, "contactPhone", 30), contactEmail: optStr(fd, "contactEmail", 120), instagram: optStr(fd, "instagram", 200),
-    description: optStr(fd, "description", 3000), status: str(fd, "status") || "ACTIVE", venueId: optStr(fd, "venueId"),
+    instagram: optStr(fd, "instagram", 200), description: optStr(fd, "description", 3000), status: str(fd, "status") || "ACTIVE",
   };
-  let newId = id;
-  try {
-    if (id) await db.team.update({ where: { id }, data });
-    else {
-      const slug = await uniqueSlug(`${name} ${SPORTS[sport as SportKey].label}`, async (s) => !!(await db.team.findUnique({ where: { slug: s } })));
-      newId = (await db.team.create({ data: { ...data, slug } })).id;
-      const leagueId = optStr(fd, "leagueId");
-      if (leagueId) await db.leagueEntry.create({ data: { leagueId, teamId: newId } }).catch(() => null);
+  let tid = id;
+  if (id) {
+    await updateDoc(ref("teams", id), data);
+    // Maçlardaki takım bilgisini güncelle
+    const ms = await getAll<Match>("matches", where("teamIds", "array-contains", id));
+    const tr = teamRef({ ...data, slug: id });
+    await batchWrite(ms.map((m) => ({ ref: ref("matches", m.id), data: m.homeTeamId === id ? { home: tr } : { away: tr }, merge: true })));
+    for (const lid of current?.leagueIds ?? []) await rebuildLeague(lid);
+  } else {
+    tid = await uniqueId("teams", `${name} ${SPORTS[sport as SportKey].label}`);
+    const leagueId = optStr(fd, "leagueId");
+    await setDoc(ref("teams", tid), { ...data, slug: tid, leagueIds: leagueId ? [leagueId] : [] });
+    if (leagueId) {
+      const league = await getOne<League>("leagues", leagueId);
+      if (league) {
+        await updateDoc(ref("leagues", leagueId), { entries: [...league.entries, { teamId: tid, penaltyPoints: 0 }] });
+        await rebuildLeague(leagueId);
+      }
     }
-    await logActivity(user.id, id ? "GUNCELLE" : "OLUSTUR", "Takım", newId, name);
-  } catch (e) { return fail(prismaMessage(e)); }
-  refresh();
-  if (!id) redirect(`/yonetim/takimlar/${newId}`);
-  return ok("Takım güncellendi.");
-}
+  }
+  await logActivity(admin, id ? "GUNCELLE" : "OLUSTUR", "Takım", tid, name);
+  changed();
+  return ok(id ? "Takım güncellendi." : "Takım oluşturuldu.", id ? undefined : `/yonetim/takimlar/duzenle?id=${tid}`);
+});
 
-export async function deleteTeam(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser(UNIT);
+export const deleteTeam = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin(UNIT);
   const id = str(fd, "id");
-  const played = await db.match.count({ where: { status: "FINISHED", OR: [{ homeTeamId: id }, { awayTeamId: id }] } });
+  const ms = await getAll<Match>("matches", where("teamIds", "array-contains", id));
+  const played = ms.filter((m) => m.status === "FINISHED").length;
   if (played > 0) return fail(`Takımın ${played} oynanmış maçı var. Silmek yerine durumunu 'Pasif' yapın.`);
-  await db.team.delete({ where: { id } });
-  await logActivity(user.id, "SIL", "Takım", id);
-  refresh();
-  redirect("/yonetim/takimlar");
-}
+  await batchDelete(ms.map((m) => ref("matches", m.id)));
+  const team = await getOne<Team>("teams", id);
+  for (const lid of team?.leagueIds ?? []) {
+    const l = await getOne<League>("leagues", lid);
+    if (l) { await updateDoc(ref("leagues", lid), { entries: l.entries.filter((e) => e.teamId !== id) }); await rebuildLeague(lid); }
+  }
+  const players = await getAll<Player>("players", where("teamId", "==", id));
+  await batchWrite(players.map((p) => ({ ref: ref("players", p.id), data: { teamId: null }, merge: true })));
+  await deleteDoc(ref("teams", id));
+  await logActivity(admin, "SIL", "Takım", id);
+  changed();
+  return ok("Takım silindi.", "/yonetim/takimlar");
+});
 
 // ───────────── Oyuncu ─────────────
 
-export async function savePlayer(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser(UNIT);
+export const savePlayer = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin(UNIT);
   const id = str(fd, "id");
-  const firstName = str(fd, "firstName", 60);
-  const lastName = str(fd, "lastName", 60);
+  const firstName = str(fd, "firstName", 60), lastName = str(fd, "lastName", 60);
   const teamId = optStr(fd, "teamId");
   if (!firstName || !lastName) return fail("Ad ve soyad zorunludur.");
-  const team = teamId ? await db.team.findUnique({ where: { id: teamId } }) : null;
-  const gender = team?.gender ?? (str(fd, "gender") || "ERKEK");
-  const current = id ? await db.player.findUnique({ where: { id } }) : null;
-  let photoUrl: string | null;
-  try { photoUrl = await imageField(fd, "photo", current?.photoUrl); } catch (e) { return fail(e instanceof UploadError ? e.message : "Fotoğraf yüklenemedi."); }
+  const team = teamId ? await getOne<Team>("teams", teamId) : null;
+  const current = id ? await getOne<Player>("players", id) : null;
+  const photoUrl = await imageField(fd, "photo", current?.photoUrl, 400);
   const identityNo = str(fd, "identityNo", 11);
   if (identityNo && !/^\d{11}$/.test(identityNo)) return fail("T.C. kimlik numarası 11 haneli olmalıdır.");
   const data = {
-    firstName, lastName, gender, teamId, photoUrl,
-    birthDate: dateOnly(fd, "birthDate"), position: optStr(fd, "position", 40), jerseyNumber: int(fd, "jerseyNumber"),
+    firstName, lastName, teamId, photoUrl, gender: team?.gender ?? (str(fd, "gender") || "ERKEK"), sport: team?.sport ?? null,
+    birthDate: str(fd, "birthDate") || null, position: optStr(fd, "position", 40), jerseyNumber: int(fd, "jerseyNumber"),
     heightCm: int(fd, "heightCm"), weightKg: int(fd, "weightKg"), strongSide: optStr(fd, "strongSide", 20), district: optStr(fd, "district", 50),
-    school: optStr(fd, "school", 120), bio: optStr(fd, "bio", 2000), licenseNo: optStr(fd, "licenseNo", 30), identityNo: identityNo || null,
+    school: optStr(fd, "school", 120), bio: optStr(fd, "bio", 2000), licenseNo: optStr(fd, "licenseNo", 30),
     isCaptain: bool(fd, "isCaptain"), status: str(fd, "status") || "ACTIVE",
   };
-  let newId = id;
-  try {
-    if (id) await db.player.update({ where: { id }, data });
-    else {
-      const slug = await uniqueSlug(`${firstName} ${lastName}`, async (s) => !!(await db.player.findUnique({ where: { slug: s } })));
-      newId = (await db.player.create({ data: { ...data, slug } })).id;
-    }
-    await logActivity(user.id, id ? "GUNCELLE" : "OLUSTUR", "Oyuncu", newId, `${firstName} ${lastName}`);
-  } catch (e) { return fail(prismaMessage(e)); }
-  refresh();
-  if (!id) redirect(`/yonetim/oyuncular/${newId}`);
-  return ok("Oyuncu güncellendi.");
-}
+  let pid = id;
+  if (id) await updateDoc(ref("players", id), data);
+  else {
+    pid = await uniqueId("players", `${firstName} ${lastName}`);
+    await setDoc(ref("players", pid), { ...data, slug: pid, createdAt: new Date() });
+  }
+  await setDoc(ref("playerPrivate", pid), { identityNo: identityNo || null });
+  await logActivity(admin, id ? "GUNCELLE" : "OLUSTUR", "Oyuncu", pid, `${firstName} ${lastName}`);
+  changed();
+  return ok(id ? "Oyuncu güncellendi." : "Oyuncu oluşturuldu.", id ? undefined : `/yonetim/oyuncular/duzenle?id=${pid}`);
+});
 
-export async function deletePlayer(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser(UNIT);
+export const deletePlayer = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin(UNIT);
   const id = str(fd, "id");
-  await db.player.delete({ where: { id } });
-  await logActivity(user.id, "SIL", "Oyuncu", id);
-  refresh();
-  redirect("/yonetim/oyuncular");
-}
+  await deleteDoc(ref("players", id));
+  await deleteDoc(ref("playerPrivate", id)).catch(() => {});
+  await logActivity(admin, "SIL", "Oyuncu", id);
+  changed();
+  return ok("Oyuncu silindi.", "/yonetim/oyuncular");
+});
 
 // ───────────── Maç ─────────────
 
-export async function saveMatch(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser(UNIT);
+export const saveMatch = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin(UNIT);
   const id = str(fd, "id");
-  const leagueId = str(fd, "leagueId");
-  const homeTeamId = str(fd, "homeTeamId");
-  const awayTeamId = str(fd, "awayTeamId");
+  const leagueId = str(fd, "leagueId"), homeTeamId = str(fd, "homeTeamId"), awayTeamId = str(fd, "awayTeamId");
   const date = dt(fd, "date");
   if (!leagueId || !homeTeamId || !awayTeamId || !date) return fail("Lig, takımlar ve tarih zorunludur.");
   if (homeTeamId === awayTeamId) return fail("Ev sahibi ve deplasman takımı aynı olamaz.");
   const status = str(fd, "status") || "SCHEDULED";
-  const homeScore = int(fd, "homeScore");
-  const awayScore = int(fd, "awayScore");
+  const homeScore = int(fd, "homeScore"), awayScore = int(fd, "awayScore");
   if (status === "FINISHED" && (homeScore == null || awayScore == null)) return fail("Biten maç için skor giriniz.");
-  const league = await db.league.findUnique({ where: { id: leagueId } });
-  if (league?.sport === "VOLEYBOL" && status === "FINISHED" && Math.max(homeScore ?? 0, awayScore ?? 0) !== 3) return fail("Voleybolda kazanan takım 3 set almalıdır.");
-  if (league && !SPORTS[league.sport as SportKey].allowsDraw && status === "FINISHED" && homeScore === awayScore) return fail(`${SPORTS[league.sport as SportKey].label} maçları berabere bitemez.`);
+  const league = await getOne<League>("leagues", leagueId);
+  if (!league) return fail("Lig bulunamadı.");
+  const def = SPORTS[league.sport as SportKey];
+  if (league.sport === "VOLEYBOL" && status === "FINISHED" && Math.max(homeScore ?? 0, awayScore ?? 0) !== 3) return fail("Voleybolda kazanan takım 3 set almalıdır.");
+  if (!def.allowsDraw && status === "FINISHED" && homeScore === awayScore) return fail(`${def.label} maçları berabere bitemez.`);
+  const [home, away] = await Promise.all([getOne<Team>("teams", homeTeamId), getOne<Team>("teams", awayTeamId)]);
+  if (!home || !away) return fail("Takım bulunamadı.");
+  const venueId = optStr(fd, "venueId");
+  const venue = venueId ? await getOne<Venue>("venues", venueId) : null;
+  const mvpPlayerId = optStr(fd, "mvpPlayerId");
+  const mvp = mvpPlayerId ? await getOne<Player>("players", mvpPlayerId) : null;
   const data = {
-    leagueId, homeTeamId, awayTeamId, date, status,
-    round: int(fd, "round") ?? 1, venueId: optStr(fd, "venueId"),
-    homeScore, awayScore,
+    leagueId, leagueName: league.name, leagueSlug: league.slug, sport: league.sport, gender: league.gender,
+    homeTeamId, awayTeamId, teamIds: [homeTeamId, awayTeamId], home: teamRef(home), away: teamRef(away),
+    date, status, round: int(fd, "round") ?? 1, venueId, venueName: venue?.name ?? null, homeScore, awayScore,
     periodScores: optStr(fd, "periodScores", 200), referee: optStr(fd, "referee", 80), attendance: int(fd, "attendance"),
-    youtubeUrl: optStr(fd, "youtubeUrl", 300), summary: optStr(fd, "summary", 5000), mvpPlayerId: optStr(fd, "mvpPlayerId"),
+    youtubeUrl: optStr(fd, "youtubeUrl", 300), summary: optStr(fd, "summary", 5000),
+    mvpPlayerId, mvpName: mvp ? `${mvp.firstName} ${mvp.lastName}` : null,
   };
-  let newId = id;
-  try {
-    if (id) await db.match.update({ where: { id }, data });
-    else newId = (await db.match.create({ data })).id;
-    await logActivity(user.id, id ? "GUNCELLE" : "OLUSTUR", "Maç", newId, status === "FINISHED" ? `Skor ${homeScore}-${awayScore}` : undefined);
-  } catch (e) { return fail(prismaMessage(e)); }
-  refresh();
-  if (!id) redirect(`/yonetim/maclar/${newId}`);
-  return ok("Maç kaydedildi.");
-}
+  let mid = id;
+  if (id) await updateDoc(ref("matches", id), data);
+  else {
+    const r = newRef("matches");
+    mid = r.id;
+    await setDoc(r, { ...data, events: [], playerIds: [] });
+  }
+  await rebuildLeague(leagueId);
+  await logActivity(admin, id ? "GUNCELLE" : "OLUSTUR", "Maç", mid, status === "FINISHED" ? `Skor ${homeScore}-${awayScore}` : undefined);
+  changed();
+  return ok("Maç kaydedildi.", id ? undefined : `/yonetim/maclar/duzenle?id=${mid}`);
+});
 
-export async function deleteMatch(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser(UNIT);
+export const deleteMatch = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin(UNIT);
   const id = str(fd, "id");
-  await db.match.delete({ where: { id } });
-  await logActivity(user.id, "SIL", "Maç", id);
-  refresh();
-  redirect("/yonetim/maclar");
+  const m = await getOne<Match>("matches", id);
+  await deleteDoc(ref("matches", id));
+  if (m) await rebuildLeague(m.leagueId);
+  await logActivity(admin, "SIL", "Maç", id);
+  changed();
+  return ok("Maç silindi.", "/yonetim/maclar");
+});
+
+async function writeEvents(matchId: string, events: MatchEvent[]) {
+  const playerIds = [...new Set(events.map((e) => e.playerId).filter((x): x is string => !!x))];
+  await updateDoc(ref("matches", matchId), { events, playerIds });
+  const m = await getOne<Match>("matches", matchId);
+  if (m) await rebuildLeague(m.leagueId);
 }
 
-export async function addEvent(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  await requireUser(UNIT);
-  const matchId = str(fd, "matchId");
-  const playerId = str(fd, "playerId");
-  const type = str(fd, "type");
+export const addEvent = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  await requireAdmin(UNIT);
+  const matchId = str(fd, "matchId"), playerId = str(fd, "playerId"), type = str(fd, "type");
   if (!playerId || !type) return fail("Oyuncu ve olay tipi seçiniz.");
-  const player = await db.player.findUnique({ where: { id: playerId } });
-  if (!player?.teamId) return fail("Oyuncunun takımı yok.");
-  await db.matchEvent.create({ data: { matchId, playerId, teamId: player.teamId, type, value: Math.max(1, int(fd, "value") ?? 1), minute: int(fd, "minute"), note: optStr(fd, "note", 100) } });
-  refresh();
+  const [m, player] = await Promise.all([getOne<Match>("matches", matchId), getOne<Player>("players", playerId)]);
+  if (!m || !player?.teamId) return fail("Maç veya oyuncu bulunamadı.");
+  const ev: MatchEvent = { id: crypto.randomUUID().slice(0, 8), teamId: player.teamId, playerId, playerName: `${player.firstName} ${player.lastName}`, type, value: Math.max(1, int(fd, "value") ?? 1), minute: int(fd, "minute") };
+  await writeEvents(matchId, [...m.events, ev].sort((a, b) => (a.minute ?? 999) - (b.minute ?? 999)));
+  changed();
   return ok("Olay eklendi.");
-}
+});
 
-/** Basketbol/voleybol gibi branşlarda toplu oyuncu istatistiği girişi */
-export async function saveBoxScore(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  await requireUser(UNIT);
-  const matchId = str(fd, "matchId");
-  const teamId = str(fd, "teamId");
-  const types = str(fd, "types").split(",").filter(Boolean);
-  const players = await db.player.findMany({ where: { teamId } });
-  await db.matchEvent.deleteMany({ where: { matchId, teamId, type: { in: types }, minute: null } });
-  const rows = players.flatMap((p) => types.map((t) => ({ p, t, v: int(fd, `${p.id}__${t}`) ?? 0 }))).filter((r) => r.v > 0);
-  if (rows.length) await db.matchEvent.createMany({ data: rows.map((r) => ({ matchId, teamId, playerId: r.p.id, type: r.t, value: r.v })) });
-  refresh();
-  return ok(`${rows.length} istatistik kaydedildi.`);
-}
-
-export async function deleteEvent(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  await requireUser(UNIT);
-  await db.matchEvent.delete({ where: { id: str(fd, "id") } }).catch(() => null);
-  refresh();
+export const deleteEvent = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  await requireAdmin(UNIT);
+  const matchId = str(fd, "matchId"), eventId = str(fd, "id");
+  const m = await getOne<Match>("matches", matchId);
+  if (!m) return fail("Maç bulunamadı.");
+  await writeEvents(matchId, m.events.filter((e) => e.id !== eventId));
+  changed();
   return ok("Silindi.");
-}
+});
 
-/** Hızlı skor girişi (maç listesinden) */
-export async function quickScore(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser(UNIT);
+/** Basketbol/voleybol/hentbol için toplu oyuncu istatistiği */
+export const saveBoxScore = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  await requireAdmin(UNIT);
+  const matchId = str(fd, "matchId"), teamId = str(fd, "teamId");
+  const types = str(fd, "types").split(",").filter(Boolean);
+  const [m, players] = await Promise.all([getOne<Match>("matches", matchId), getAll<Player>("players", where("teamId", "==", teamId))]);
+  if (!m) return fail("Maç bulunamadı.");
+  const kept = m.events.filter((e) => !(e.teamId === teamId && types.includes(e.type) && e.minute == null));
+  const added: MatchEvent[] = players.flatMap((p) => types.map((t) => ({ p, t, v: int(fd, `${p.id}__${t}`) ?? 0 })))
+    .filter((r) => r.v > 0)
+    .map((r) => ({ id: crypto.randomUUID().slice(0, 8), teamId, playerId: r.p.id, playerName: `${r.p.firstName} ${r.p.lastName}`, type: r.t, value: r.v, minute: null }));
+  await writeEvents(matchId, [...kept, ...added]);
+  changed();
+  return ok(`${added.length} istatistik kaydedildi.`);
+});
+
+export const quickScore = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin(UNIT);
   const id = str(fd, "id");
   const hs = int(fd, "homeScore"), as = int(fd, "awayScore");
   if (hs == null || as == null) return fail("Skor giriniz.");
-  await db.match.update({ where: { id }, data: { homeScore: hs, awayScore: as, status: "FINISHED" } });
-  await logActivity(user.id, "SKOR", "Maç", id, `${hs}-${as}`);
-  refresh();
+  const m = await getOne<Match>("matches", id);
+  if (!m) return fail("Maç bulunamadı.");
+  await updateDoc(ref("matches", id), { homeScore: hs, awayScore: as, status: "FINISHED" });
+  await rebuildLeague(m.leagueId);
+  await logActivity(admin, "SKOR", "Maç", id, `${hs}-${as}`);
+  changed();
   return ok(`Skor kaydedildi: ${hs}-${as}`);
-}
+});
 
 // ───────────── Tesis ─────────────
 
-export async function saveVenue(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser();
+export const saveVenue = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin();
   const id = str(fd, "id");
-  const name = str(fd, "name", 120);
-  const district = str(fd, "district", 50);
+  const name = str(fd, "name", 120), district = str(fd, "district", 50);
   if (!name || !district) return fail("Ad ve ilçe zorunludur.");
   const data = { name, district, type: str(fd, "type") || "SAHA", address: optStr(fd, "address", 300), capacity: int(fd, "capacity"), mapUrl: optStr(fd, "mapUrl", 500), description: optStr(fd, "description", 2000) };
-  try {
-    if (id) await db.venue.update({ where: { id }, data });
-    else {
-      const slug = await uniqueSlug(name, async (s) => !!(await db.venue.findUnique({ where: { slug: s } })));
-      await db.venue.create({ data: { ...data, slug } });
-    }
-    await logActivity(user.id, id ? "GUNCELLE" : "OLUSTUR", "Tesis", id || undefined, name);
-  } catch (e) { return fail(prismaMessage(e)); }
-  refresh();
+  if (id) await updateDoc(ref("venues", id), data);
+  else {
+    const vid = await uniqueId("venues", name);
+    await setDoc(ref("venues", vid), { ...data, slug: vid });
+  }
+  await logActivity(admin, id ? "GUNCELLE" : "OLUSTUR", "Tesis", id || undefined, name);
+  changed();
   return ok(id ? "Tesis güncellendi." : "Tesis eklendi.");
-}
+});
 
-export async function deleteVenue(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  await requireUser();
-  await db.venue.delete({ where: { id: str(fd, "id") } }).catch(() => null);
-  refresh();
+export const deleteVenue = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  await requireAdmin();
+  await deleteDoc(ref("venues", str(fd, "id")));
+  changed();
   return ok("Silindi.");
-}
+});

@@ -1,15 +1,15 @@
-import type { Metadata } from "next";
-import { requireUser } from "@/lib/auth";
+"use client";
+
+import { useAdmin } from "../../AdminContext";
 import { ROLES, SCOPES } from "@/lib/constants";
 import { KeyValue } from "@/components/ui";
 import { AdminHeader, Panel, TextField } from "@/components/admin/fields";
 import { AdminForm } from "@/components/admin/AdminForm";
 import { changePassword } from "@/actions/genel";
 
-export const metadata: Metadata = { title: "Profil" };
 
-export default async function ProfilePage() {
-  const user = await requireUser();
+export default function ProfilePage() {
+  const user = useAdmin();
   return (
     <>
       <AdminHeader title="Profil" />

@@ -1,19 +1,29 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
-import { db } from "@/lib/db";
+import { getAnnouncements } from "@/lib/data";
+import { useData, useTitle } from "@/lib/hooks";
+import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { ANNOUNCEMENT_CATEGORIES } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { Badge, EmptyState, PageHero } from "@/components/ui";
 import { FilterChips } from "@/components/FilterBar";
 
-export const metadata: Metadata = { title: "Duyurular", description: "Diyarbakır Gençlik Organizasyonu haber ve duyuruları." };
 
 const GRAD: Record<string, string> = { GENEL: "from-basalt-700 to-basalt-950", SPOR: "from-emerald-600 to-teal-900", MUZIK: "from-fuchsia-600 to-purple-950", TIYATRO: "from-amber-600 to-curtain-900", BASVURU: "from-sky-500 to-indigo-900" };
 
-export default async function AnnouncementsPage({ searchParams }: { searchParams: Promise<{ kategori?: string }> }) {
-  const sp = await searchParams;
+export default function AnnouncementsPage() {
+  return <Suspended><Inner /></Suspended>;
+}
+
+function Inner() {
+  useTitle("Duyurular");
+  const sp = { kategori: useParam("kategori") };
   const cat = sp.kategori?.toUpperCase();
-  const list = await db.announcement.findMany({ where: { isPublished: true, publishedAt: { lte: new Date() }, ...(cat ? { category: cat } : {}) }, orderBy: [{ isPinned: "desc" }, { publishedAt: "desc" }] });
+  const { data, error } = useData(getAnnouncements, []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const list = data.filter((a) => !cat || a.category === cat);
   return (
     <>
       <PageHero eyebrow="Haberler" title="Duyurular" description="Organizasyondan son haberler, başvuru duyuruları ve etkinlik bilgileri." />
@@ -22,7 +32,7 @@ export default async function AnnouncementsPage({ searchParams }: { searchParams
         {list.length === 0 && <EmptyState title="Duyuru bulunmuyor" />}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {list.map((a) => (
-            <Link key={a.id} href={`/duyurular/${a.slug}`} className="card group overflow-hidden transition hover:-translate-y-0.5 hover:shadow-xl">
+            <Link key={a.id} href={`/duyurular/oku?s=${a.slug}`} className="card group overflow-hidden transition hover:-translate-y-0.5 hover:shadow-xl">
               <div className={`relative aspect-[16/8] bg-gradient-to-br ${GRAD[a.category] ?? GRAD.GENEL}`}>
                 {a.coverUrl && (
                   // eslint-disable-next-line @next/next/no-img-element

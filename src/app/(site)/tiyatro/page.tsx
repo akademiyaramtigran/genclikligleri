@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import { Award, CalendarDays, Clock, Drama, MapPin, Sparkles, Ticket, Users } from "lucide-react";
-import { db } from "@/lib/db";
+import { getCurrentFestival, getFestivalPlays, getFestivals, getGroups, getPeriods } from "@/lib/data";
+import { useData, useTitle } from "@/lib/hooks";
+import { ErrorBox, PageLoader, Suspended, useParam } from "@/components/client";
 import { FESTIVAL_STATUS, SHOW_STATUS } from "@/lib/constants";
 import { cn, dayKey, formatDate, formatTime, formatWeekday } from "@/lib/utils";
 import { periodState } from "@/lib/periods";
@@ -9,24 +12,30 @@ import { Badge, EmptyState, StatusBadge } from "@/components/ui";
 import { YouTubeEmbed } from "@/components/YouTubeEmbed";
 import { Countdown } from "@/components/Countdown";
 
-export const metadata: Metadata = { title: "Gençlik Tiyatro Festivali", description: "Diyarbakır Gençlik Tiyatro Festivali: program, oyunlar, topluluklar, atölyeler ve ödüller." };
 
 const POSTER = ["from-red-800 to-curtain-950", "from-amber-700 to-curtain-900", "from-rose-900 to-black", "from-orange-800 to-curtain-950", "from-yellow-800 to-curtain-900", "from-red-900 to-amber-950"];
 
-export default async function TheatrePage({ searchParams }: { searchParams: Promise<{ gun?: string }> }) {
-  const { gun } = await searchParams;
-  const [festival, archive, period] = await Promise.all([
-    db.theatreFestival.findFirst({
-      where: { isCurrent: true },
-      include: {
-        plays: { include: { group: true, shows: { include: { venue: true }, orderBy: { date: "asc" } } }, orderBy: { title: "asc" } },
-        workshops: { orderBy: { date: "asc" } },
-        awards: { include: { play: true } },
-      },
-    }),
-    db.theatreFestival.findMany({ where: { isCurrent: false }, include: { awards: true, _count: { select: { plays: true } } }, orderBy: { startDate: "desc" } }),
-    db.applicationPeriod.findFirst({ where: { category: "TIYATRO", isPublished: true, endDate: { gte: new Date() } }, orderBy: { startDate: "asc" } }),
-  ]);
+export default function TheatrePage() {
+  return <Suspended><Inner /></Suspended>;
+}
+
+function Inner() {
+  useTitle("Gençlik Tiyatro Festivali");
+  const gun = useParam("gun");
+  const { data, error } = useData(async () => {
+    const [current, festivals, periods, allGroups] = await Promise.all([getCurrentFestival(), getFestivals(), getPeriods(), getGroups()]);
+    const plays = current ? await getFestivalPlays(current.id) : [];
+    const period = periods.filter((p) => p.category === "TIYATRO" && p.endDate >= new Date()).sort((x, y) => x.startDate.getTime() - y.startDate.getTime())[0] ?? null;
+    return {
+      festival: current ? { ...current, plays } : null,
+      archive: festivals.filter((f) => !f.isCurrent).sort((x, y) => y.startDate.getTime() - x.startDate.getTime()),
+      period,
+      allGroups,
+    };
+  }, []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader className="bg-[#160404]" />;
+  const { festival, archive, period, allGroups } = data;
 
   if (!festival) {
     return <div className="bg-curtain-950 py-20"><div className="container-x"><EmptyState dark title="Yeni festival yakında duyurulacak" icon="🎭" /></div></div>;
@@ -38,7 +47,7 @@ export default async function TheatrePage({ searchParams }: { searchParams: Prom
   const activeDay = gun && days.includes(gun) ? gun : days.includes(today) ? today : days[0];
   const dayShows = shows.filter((s) => dayKey(s.date) === activeDay);
   const dayWorkshops = festival.workshops.filter((w) => dayKey(w.date) === activeDay);
-  const groups = [...new Map(festival.plays.map((p) => [p.group.id, p.group])).values()];
+  const groups = allGroups.filter((g) => festival.plays.some((p) => p.groupId === g.id));
   const featured = festival.plays.find((p) => p.youtubeUrl);
   const posterOf = (id: string) => POSTER[festival.plays.findIndex((p) => p.id === id) % POSTER.length];
 
@@ -95,7 +104,7 @@ export default async function TheatrePage({ searchParams }: { searchParams: Prom
             .sort((a, b) => a.date.getTime() - b.date.getTime())
             .map((item) =>
               item.kind === "show" ? (
-                <Link key={item.s.id} href={`/tiyatro/oyun/${item.s.play.slug}`} className="group flex flex-col gap-4 overflow-hidden rounded-3xl bg-gradient-to-r from-white/[0.07] to-white/[0.02] p-5 ring-1 ring-amber-200/10 transition hover:ring-amber-300/40 sm:flex-row sm:items-center">
+                <Link key={item.s.id} href={`/tiyatro/oyun?s=${item.s.play.slug}`} className="group flex flex-col gap-4 overflow-hidden rounded-3xl bg-gradient-to-r from-white/[0.07] to-white/[0.02] p-5 ring-1 ring-amber-200/10 transition hover:ring-amber-300/40 sm:flex-row sm:items-center">
                   <div className="flex items-center gap-4 sm:w-28 sm:flex-col sm:items-start sm:gap-0">
                     <p className="font-serif text-4xl font-bold text-amber-300">{formatTime(item.s.date)}</p>
                     <p className="text-xs text-white/50">{item.s.play.durationMin ? `${item.s.play.durationMin} dk` : ""}</p>
@@ -108,10 +117,10 @@ export default async function TheatrePage({ searchParams }: { searchParams: Prom
                       {!item.s.play.inCompetition && <Badge tone="dark">Yarışma Dışı</Badge>}
                     </div>
                     <p className="mt-2 font-serif text-2xl font-bold group-hover:text-amber-200">{item.s.play.title}</p>
-                    <p className="text-sm text-white/60">{item.s.play.group.name} · Yazan: {item.s.play.playwright} · Yöneten: {item.s.play.director}</p>
+                    <p className="text-sm text-white/60">{item.s.play.groupName} · Yazan: {item.s.play.playwright} · Yöneten: {item.s.play.director}</p>
                   </div>
                   <div className="space-y-2 text-sm sm:text-right">
-                    <p className="flex items-center gap-1.5 text-white/70 sm:justify-end"><MapPin className="h-4 w-4 text-amber-400" /> {item.s.venue?.name}</p>
+                    <p className="flex items-center gap-1.5 text-white/70 sm:justify-end"><MapPin className="h-4 w-4 text-amber-400" /> {item.s.venueName}</p>
                     <StatusBadge map={SHOW_STATUS} value={item.s.status} />
                   </div>
                 </Link>
@@ -138,13 +147,13 @@ export default async function TheatrePage({ searchParams }: { searchParams: Prom
           </div>
           <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
             {festival.plays.map((p) => (
-              <Link key={p.id} href={`/tiyatro/oyun/${p.slug}`} className="group">
+              <Link key={p.id} href={`/tiyatro/oyun?s=${p.slug}`} className="group">
                 <div className={cn("relative flex aspect-[3/4] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-b p-5 shadow-2xl ring-1 ring-amber-200/20 transition duration-300 group-hover:-translate-y-1 group-hover:ring-amber-300/60", posterOf(p.id))}>
                   {p.posterUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={p.posterUrl} alt={p.title} className="absolute inset-0 h-full w-full object-cover" />
                   )}
-                  <div className="relative text-[10px] font-bold uppercase tracking-[0.3em] text-amber-200/80">{p.group.name}</div>
+                  <div className="relative text-[10px] font-bold uppercase tracking-[0.3em] text-amber-200/80">{p.groupName}</div>
                   <div className="relative">
                     <Drama className="mb-3 h-8 w-8 text-amber-300/60" />
                     <p className="font-serif text-2xl font-bold leading-tight">{p.title}</p>
@@ -175,7 +184,7 @@ export default async function TheatrePage({ searchParams }: { searchParams: Prom
           <h2 className="mb-5 font-serif text-3xl font-bold">Topluluklar</h2>
           <div className="space-y-2">
             {groups.map((g) => (
-              <Link key={g.id} href={`/tiyatro/topluluk/${g.slug}`} className="flex items-center gap-3 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10 transition hover:bg-white/10">
+              <Link key={g.id} href={`/tiyatro/topluluk?s=${g.slug}`} className="flex items-center gap-3 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10 transition hover:bg-white/10">
                 <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-red-700 font-serif font-bold">{g.name[0]}</span>
                 <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{g.name}</span><span className="text-xs text-white/50">{g.district}{g.memberCount ? ` · ${g.memberCount} üye` : ""}</span></span>
               </Link>
@@ -212,7 +221,7 @@ export default async function TheatrePage({ searchParams }: { searchParams: Prom
           <Drama className="h-10 w-10 text-amber-300" />
           <h2 className="font-serif text-3xl font-bold">Topluluğunla sahneye çık</h2>
           <p className="max-w-lg text-white/70">{period ? `${period.title}: ${periodState(period) === "OPEN" ? "Başvurular açık!" : `${formatDate(period.startDate)} tarihinde açılıyor.`}` : "Bir sonraki festival için başvuru dönemi duyurulacak."}</p>
-          <Link href={period ? `/basvuru/${period.slug}` : "/basvuru"} className="btn bg-amber-400 px-6 py-3 text-curtain-950 hover:bg-amber-300"><Clock className="h-4 w-4" /> Başvuru Şartları</Link>
+          <Link href={period ? `/basvuru/detay?s=${period.slug}` : "/basvuru"} className="btn bg-amber-400 px-6 py-3 text-curtain-950 hover:bg-amber-300"><Clock className="h-4 w-4" /> Başvuru Şartları</Link>
         </div>
       </section>
     </div>

@@ -1,37 +1,44 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
 import { Search } from "lucide-react";
-import { db } from "@/lib/db";
+import { getPlayers, teamMap } from "@/lib/data";
+import { useData, useTitle } from "@/lib/hooks";
+import { ErrorBox, PageLoader, Suspended, useParam, withBase } from "@/components/client";
 import { SPORT_LIST, sportBySlug, sportDef } from "@/lib/constants";
 import { age } from "@/lib/utils";
 import { Avatar, EmptyState, PageHero, Badge } from "@/components/ui";
 import { FilterChips, Pagination } from "@/components/FilterBar";
 
-export const metadata: Metadata = { title: "Oyuncular", description: "Gençlik liglerindeki lisanslı sporcuların profilleri." };
 const PER = 36;
 
-export default async function PlayersPage({ searchParams }: { searchParams: Promise<{ q?: string; brans?: string; cinsiyet?: string; sayfa?: string }> }) {
-  const sp = await searchParams;
+export default function PlayersPage() {
+  return <Suspended><Inner /></Suspended>;
+}
+
+function Inner() {
+  useTitle("Oyuncular");
+  const sp = { q: useParam("q"), brans: useParam("brans"), cinsiyet: useParam("cinsiyet"), sayfa: useParam("sayfa") };
   const page = Math.max(1, Number(sp.sayfa) || 1);
   const sport = sportBySlug(sp.brans ?? "")?.key;
   const gender = sp.cinsiyet === "kadin" ? "KADIN" : sp.cinsiyet === "erkek" ? "ERKEK" : undefined;
-  const q = sp.q?.trim();
-  const where = {
-    status: { not: "PASSIVE" },
-    ...(gender ? { gender } : {}),
-    ...(sport ? { team: { sport } } : {}),
-    ...(q ? { OR: [{ firstName: { contains: q } }, { lastName: { contains: q } }, { team: { name: { contains: q } } }] } : {}),
-  };
-  const [total, players] = await Promise.all([
-    db.player.count({ where }),
-    db.player.findMany({ where, include: { team: true }, orderBy: [{ lastName: "asc" }, { firstName: "asc" }], skip: (page - 1) * PER, take: PER }),
-  ]);
+  const q = sp.q?.trim().toLocaleLowerCase("tr-TR");
+  const { data, error } = useData(async () => ({ players: await getPlayers(), teams: await teamMap() }), []);
+  if (error) return <ErrorBox message={error} />;
+  if (!data) return <PageLoader />;
+  const all = data.players
+    .map((p) => ({ ...p, team: p.teamId ? data.teams.get(p.teamId) : undefined }))
+    .filter((p) => p.status !== "PASSIVE" && (!gender || p.gender === gender) && (!sport || p.team?.sport === sport)
+      && (!q || `${p.firstName} ${p.lastName} ${p.team?.name ?? ""}`.toLocaleLowerCase("tr-TR").includes(q)))
+    .sort((a, b) => a.lastName.localeCompare(b.lastName, "tr") || a.firstName.localeCompare(b.firstName, "tr"));
+  const total = all.length;
+  const players = all.slice((page - 1) * PER, page * PER);
   const params = { q: sp.q, brans: sp.brans, cinsiyet: sp.cinsiyet };
 
   return (
     <>
       <PageHero eyebrow="Sporcular" title="Oyuncu Profilleri" description={`${total.toLocaleString("tr-TR")} lisanslı sporcu`}>
-        <form className="mt-6 flex max-w-lg gap-2" action="/spor/oyuncular">
+        <form className="mt-6 flex max-w-lg gap-2" action={withBase("/spor/oyuncular/")}>
           {sp.brans && <input type="hidden" name="brans" value={sp.brans} />}
           {sp.cinsiyet && <input type="hidden" name="cinsiyet" value={sp.cinsiyet} />}
           <div className="relative flex-1">
@@ -49,7 +56,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
         {players.length === 0 && <EmptyState title="Oyuncu bulunamadı" description="Farklı bir arama deneyin." />}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {players.map((p) => (
-            <Link key={p.id} href={`/spor/oyuncu/${p.slug}`} className="card group flex items-center gap-3 p-3 transition hover:shadow-lg">
+            <Link key={p.id} href={`/spor/oyuncu?s=${p.slug}`} className="card group flex items-center gap-3 p-3 transition hover:shadow-lg">
               <Avatar name={`${p.firstName} ${p.lastName}`} src={p.photoUrl} size={52} color={p.team?.primaryColor} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold group-hover:text-dicle-700">{p.firstName} {p.lastName}</p>

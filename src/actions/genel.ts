@@ -1,143 +1,141 @@
-"use server";
+"use client";
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import bcrypt from "bcryptjs";
-import { db } from "@/lib/db";
-import { requireUser, requireSuperAdmin, logActivity, hashPassword, canAccess, type Unit } from "@/lib/auth";
-import { deleteDocument, saveImage, UploadError } from "@/lib/storage";
-import { uniqueSlug } from "@/lib/slug";
-import { type ActionResult, ok, fail, str, optStr, int, bool, dt, file, prismaMessage } from "@/lib/form";
+import { deleteDoc, setDoc, updateDoc, where } from "firebase/firestore";
+import { createUserWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, signOut, updatePassword } from "firebase/auth";
+import { fauth, secondaryAuth } from "@/lib/firebase";
+import { getAll, getOne } from "@/lib/data";
+import { requireAdmin, requireSuper, canAccess, logActivity, uniqueId, ref, newRef, changed, batchWrite, rebuildLeague, type Unit } from "@/lib/admin";
+import { deleteFile } from "@/lib/files";
+import { type ActionResult, ok, fail, str, optStr, int, bool, dt, errMessage } from "@/lib/form";
 import { APPLICATION_STATUS, SPORTS, type SportKey } from "@/lib/constants";
-import { parseJson, slugify } from "@/lib/utils";
+import { slugify } from "@/lib/utils";
+import { imageField } from "./spor";
+import type { Application, League, MusicCompetition, Period, TheatreFestival, TheatreGroup } from "@/lib/types";
 
-const refresh = () => revalidatePath("/", "layout");
+const wrap = (fn: () => Promise<ActionResult>) => fn().catch((e) => fail(errMessage(e)));
 
 // ═════════════ BAŞVURULAR ═════════════
 
 async function loadApp(id: string) {
-  const user = await requireUser();
-  const app = await db.application.findUnique({ where: { id }, include: { period: true } });
+  const admin = await requireAdmin();
+  const app = await getOne<Application>("applications", id);
   if (!app) throw new Error("Başvuru bulunamadı");
-  if (!canAccess(user, app.period.category as Unit)) throw new Error("Bu başvuru için yetkiniz yok");
-  return { user, app };
+  if (!canAccess(admin, app.category as Unit)) throw new Error("Bu başvuru için yetkiniz yok");
+  return { admin, app };
 }
 
-export async function updateApplication(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  try {
-    const { user, app } = await loadApp(str(fd, "id"));
-    const status = str(fd, "status");
-    if (!(status in APPLICATION_STATUS)) return fail("Geçersiz durum.");
-    if (status === "APPROVED" && !app.resultEntityId) return fail("Onaylamak için 'Onayla ve Kayıt Oluştur' butonunu kullanın.");
-    await db.application.update({
-      where: { id: app.id },
-      data: { status, adminNote: optStr(fd, "adminNote", 3000), publicNote: optStr(fd, "publicNote", 2000), reviewedById: user.id, reviewedAt: new Date() },
-    });
-    await logActivity(user.id, "DURUM", "Başvuru", app.id, `${app.title} → ${APPLICATION_STATUS[status]!.label}`);
-  } catch (e) { return fail(prismaMessage(e)); }
-  refresh();
+async function syncStatus(app: Application, patch: Partial<Application>) {
+  const merged = { ...app, ...patch };
+  await setDoc(ref("applicationStatus", app.id), { status: merged.status, publicNote: merged.publicNote ?? null, reviewedAt: new Date() }, { merge: true });
+}
+
+export const updateApplication = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const { admin, app } = await loadApp(str(fd, "id"));
+  const status = str(fd, "status");
+  if (!(status in APPLICATION_STATUS)) return fail("Geçersiz durum.");
+  if (status === "APPROVED" && !app.resultEntityId) return fail("Onaylamak için 'Onayla ve Kayıt Oluştur' butonunu kullanın.");
+  const patch = { status, adminNote: optStr(fd, "adminNote", 3000), publicNote: optStr(fd, "publicNote", 2000), reviewedBy: admin.name, reviewedAt: new Date() };
+  await updateDoc(ref("applications", app.id), patch);
+  await syncStatus(app, patch);
+  await logActivity(admin, "DURUM", "Başvuru", app.id, `${app.title} → ${APPLICATION_STATUS[status]!.label}`);
+  changed();
   return ok("Başvuru güncellendi.");
-}
+});
 
-/** Başvuruyu onaylar ve ilgili kaydı (takım+oyuncular / yarışmacı / topluluk+oyun) otomatik oluşturur */
-export async function approveApplication(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+/** Başvuruyu onaylar ve ilgili kaydı otomatik oluşturur */
+export const approveApplication = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const { admin, app } = await loadApp(str(fd, "id"));
+  if (app.resultEntityId) return fail("Bu başvuru için kayıt zaten oluşturulmuş.");
+  const data = app.data;
+  const members = app.members;
+  let resultId = "";
   let message = "";
-  try {
-    const { user, app } = await loadApp(str(fd, "id"));
-    if (app.resultEntityId) return fail("Bu başvuru için kayıt zaten oluşturulmuş.");
-    const data = parseJson<Record<string, string>>(app.data, {});
-    const members = parseJson<Record<string, string>[]>(app.members, []);
-    let resultId = "";
+  const period = await getOne<Period>("periods", app.periodId);
 
-    if (app.period.category === "SPOR") {
-      const sport = (data.sport || app.period.sport || "FUTBOL") as SportKey;
-      const gender = data.gender || app.period.gender || "ERKEK";
-      const leagueId = optStr(fd, "leagueId");
-      const slug = await uniqueSlug(`${app.title} ${SPORTS[sport]?.label ?? ""}`, async (s) => !!(await db.team.findUnique({ where: { slug: s } })));
-      const team = await db.team.create({
-        data: {
-          slug, name: app.title, shortName: (data.shortName || app.title.slice(0, 3)).toLocaleUpperCase("tr-TR").slice(0, 4), sport, gender, district: app.district,
-          primaryColor: data.primaryColor || "#0f766e", secondaryColor: data.secondaryColor || "#ffffff", foundedYear: data.foundedYear ? Number(data.foundedYear) || null : null,
-          coachName: data.coachName || null, managerName: app.applicantName, contactPhone: app.applicantPhone, contactEmail: app.applicantEmail, description: data.note || null,
-        },
-      });
-      for (const m of members) {
-        const pslug = await uniqueSlug(`${m.firstName} ${m.lastName}`, async (s) => !!(await db.player.findUnique({ where: { slug: s } })));
-        await db.player.create({
-          data: {
-            slug: pslug, firstName: m.firstName ?? "", lastName: m.lastName ?? "", gender, teamId: team.id, district: app.district,
-            birthDate: m.birthDate ? new Date(`${m.birthDate}T12:00:00+03:00`) : null, position: m.position || null,
-            jerseyNumber: m.jerseyNumber ? Number(m.jerseyNumber) || null : null, identityNo: /^\d{11}$/.test(m.identityNo ?? "") ? m.identityNo : null,
-          },
-        });
-      }
-      if (leagueId) {
-        const league = await db.league.findUnique({ where: { id: leagueId } });
-        if (league && league.sport === sport && league.gender === gender) await db.leagueEntry.create({ data: { leagueId, teamId: team.id } });
-      }
-      resultId = team.id;
-      message = `"${team.name}" takımı ${members.length} oyuncuyla oluşturuldu.`;
-    } else if (app.period.category === "MUZIK") {
-      const comp = await db.musicCompetition.findFirst({ where: { isCurrent: true } }) ?? await db.musicCompetition.findFirst({ orderBy: { createdAt: "desc" } });
-      if (!comp) return fail("Önce bir müzik yarışması oluşturun.");
-      const slug = await uniqueSlug(app.title, async (s) => !!(await db.musicContestant.findUnique({ where: { slug: s } })));
-      const c = await db.musicContestant.create({
-        data: {
-          slug, competitionId: comp.id, name: app.title, type: data.type || "SOLO", genre: data.genre || "Pop", district: app.district, bio: data.bio || null,
-          instagram: data.instagram ? (data.instagram.startsWith("http") ? data.instagram : `https://instagram.com/${data.instagram.replace(/^@/, "")}`) : null,
-          youtubeUrl: data.demoUrl || null,
-          members: JSON.stringify(members.map((m) => ({ name: `${m.firstName} ${m.lastName}`.trim(), role: m.role ?? "" }))),
-        },
-      });
-      resultId = c.id;
-      message = `"${c.name}" ${comp.name} ${comp.edition} yarışmacısı olarak eklendi.`;
-    } else {
-      const fest = await db.theatreFestival.findFirst({ where: { isCurrent: true } }) ?? await db.theatreFestival.findFirst({ orderBy: { startDate: "desc" } });
-      if (!fest) return fail("Önce bir tiyatro festivali oluşturun.");
-      let group = await db.theatreGroup.findFirst({ where: { name: app.title } });
-      if (!group) {
-        const gslug = await uniqueSlug(app.title, async (s) => !!(await db.theatreGroup.findUnique({ where: { slug: s } })));
-        group = await db.theatreGroup.create({ data: { slug: gslug, name: app.title, district: app.district, director: data.director || app.applicantName, memberCount: members.length || null } });
-      }
-      const title = data.playTitle || app.title;
-      const pslug = await uniqueSlug(title, async (s) => !!(await db.theatrePlay.findUnique({ where: { slug: s } })));
-      await db.theatrePlay.create({
-        data: {
-          slug: pslug, festivalId: fest.id, groupId: group.id, title, playwright: data.playwright || "—", director: data.director || app.applicantName,
-          genre: data.genre || "Dram", durationMin: data.durationMin ? Number(data.durationMin) || null : null, language: data.language || "Türkçe",
-          synopsis: data.synopsis || null, youtubeUrl: data.videoUrl || null,
-          cast: JSON.stringify(members.map((m) => ({ name: `${m.firstName} ${m.lastName}`.trim(), role: m.role ?? "" }))),
-        },
-      });
-      resultId = group.id;
-      message = `"${group.name}" topluluğu ve "${title}" oyunu ${fest.edition} festivale eklendi.`;
+  if (app.category === "SPOR") {
+    const sport = (data.sport || period?.sport || "FUTBOL") as SportKey;
+    const gender = data.gender || period?.gender || "ERKEK";
+    const leagueId = optStr(fd, "leagueId");
+    const league = leagueId ? await getOne<League>("leagues", leagueId) : null;
+    const useLeague = league && league.sport === sport && league.gender === gender ? league : null;
+    const tid = await uniqueId("teams", `${app.title} ${SPORTS[sport]?.label ?? ""}`);
+    const team = {
+      slug: tid, name: app.title, shortName: (data.shortName || app.title.slice(0, 3)).toLocaleUpperCase("tr-TR").slice(0, 4), sport, gender, district: app.district,
+      primaryColor: data.primaryColor || "#0f766e", secondaryColor: data.secondaryColor || "#ffffff", logoUrl: data.logoUrl || null,
+      foundedYear: data.foundedYear ? Number(data.foundedYear) || null : null, coachName: data.coachName || null, managerName: app.applicantName,
+      description: data.note || null, status: "ACTIVE", leagueIds: useLeague ? [useLeague.id] : [], venueId: null, venueName: null,
+    };
+    await setDoc(ref("teams", tid), team);
+    const used = new Set<string>();
+    const ops = [];
+    for (const m of members) {
+      let pid = slugify(`${m.firstName} ${m.lastName}`) || "oyuncu";
+      if (used.has(pid) || (await getOne("players", pid))) { let i = 2; while (used.has(`${pid}-${i}`) || (await getOne("players", `${pid}-${i}`))) i++; pid = `${pid}-${i}`; }
+      used.add(pid);
+      ops.push({ ref: ref("players", pid), data: { slug: pid, firstName: m.firstName ?? "", lastName: m.lastName ?? "", gender, sport, teamId: tid, district: app.district, birthDate: m.birthDate || null, position: m.position || null, jerseyNumber: m.jerseyNumber ? Number(m.jerseyNumber) || null : null, isCaptain: false, status: "ACTIVE", createdAt: new Date() } });
+      if (/^\d{11}$/.test(m.identityNo ?? "")) ops.push({ ref: ref("playerPrivate", pid), data: { identityNo: m.identityNo } });
     }
-
-    await db.application.update({
-      where: { id: app.id },
-      data: { status: "APPROVED", resultEntityId: resultId, reviewedById: user.id, reviewedAt: new Date(), publicNote: optStr(fd, "publicNote", 2000) ?? app.publicNote },
+    await batchWrite(ops);
+    if (useLeague) {
+      await updateDoc(ref("leagues", useLeague.id), { entries: [...useLeague.entries, { teamId: tid, penaltyPoints: 0 }] });
+      await rebuildLeague(useLeague.id);
+    }
+    resultId = tid;
+    message = `"${app.title}" takımı ${members.length} oyuncuyla oluşturuldu.`;
+  } else if (app.category === "MUZIK") {
+    const comps = await getAll<MusicCompetition>("musicCompetitions");
+    const comp = comps.find((c) => c.isCurrent) ?? comps[0];
+    if (!comp) return fail("Önce bir müzik yarışması oluşturun.");
+    const cid = await uniqueId("musicContestants", app.title);
+    await setDoc(ref("musicContestants", cid), {
+      slug: cid, competitionId: comp.id, name: app.title, type: data.type || "SOLO", genre: data.genre || "Pop", district: app.district, bio: data.bio || null,
+      instagram: data.instagram ? (data.instagram.startsWith("http") ? data.instagram : `https://instagram.com/${data.instagram.replace(/^@/, "")}`) : null,
+      youtubeUrl: data.demoUrl || null, status: "ACTIVE", photoUrl: null,
+      members: members.map((m) => ({ name: `${m.firstName} ${m.lastName}`.trim(), role: m.role ?? "" })), createdAt: new Date(),
     });
-    await logActivity(user.id, "ONAY", "Başvuru", app.id, message);
-  } catch (e) { return fail(prismaMessage(e)); }
-  refresh();
+    resultId = cid;
+    message = `"${app.title}" ${comp.name} ${comp.edition} yarışmacısı olarak eklendi.`;
+  } else {
+    const fests = await getAll<TheatreFestival>("theatreFestivals");
+    const fest = fests.find((f) => f.isCurrent) ?? fests[0];
+    if (!fest) return fail("Önce bir tiyatro festivali oluşturun.");
+    const groups = await getAll<TheatreGroup>("theatreGroups", where("name", "==", app.title));
+    let gid = groups[0]?.id;
+    if (!gid) {
+      gid = await uniqueId("theatreGroups", app.title);
+      await setDoc(ref("theatreGroups", gid), { slug: gid, name: app.title, district: app.district, director: data.director || app.applicantName, memberCount: members.length || null });
+    }
+    const title = data.playTitle || app.title;
+    const pid = await uniqueId("theatrePlays", title);
+    await setDoc(ref("theatrePlays", pid), {
+      slug: pid, festivalId: fest.id, groupId: gid, groupName: app.title, groupSlug: gid, title, playwright: data.playwright || "—", director: data.director || app.applicantName,
+      genre: data.genre || "Dram", durationMin: data.durationMin ? Number(data.durationMin) || null : null, language: data.language || "Türkçe",
+      synopsis: data.synopsis || null, youtubeUrl: data.videoUrl || null, inCompetition: true, shows: [], posterUrl: null,
+      cast: members.map((m) => ({ name: `${m.firstName} ${m.lastName}`.trim(), role: m.role ?? "" })), createdAt: new Date(),
+    });
+    resultId = gid;
+    message = `"${app.title}" topluluğu ve "${title}" oyunu ${fest.edition} festivale eklendi.`;
+  }
+  const patch = { status: "APPROVED", resultEntityId: resultId, reviewedBy: admin.name, reviewedAt: new Date(), publicNote: optStr(fd, "publicNote", 2000) ?? app.publicNote ?? null };
+  await updateDoc(ref("applications", app.id), patch);
+  await syncStatus(app, patch);
+  await logActivity(admin, "ONAY", "Başvuru", app.id, message);
+  changed();
   return ok(message);
-}
+});
 
-export async function deleteApplication(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  try {
-    const { user, app } = await loadApp(str(fd, "id"));
-    const docs = await db.applicationDocument.findMany({ where: { applicationId: app.id } });
-    await db.application.delete({ where: { id: app.id } });
-    await Promise.all(docs.map((d) => deleteDocument(d.storedName)));
-    await logActivity(user.id, "SIL", "Başvuru", app.id, app.title);
-  } catch (e) { return fail(prismaMessage(e)); }
-  refresh();
-  redirect("/yonetim/basvurular");
-}
+export const deleteApplication = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const { admin, app } = await loadApp(str(fd, "id"));
+  for (const d of app.documents) await deleteFile(d.path).catch(() => {});
+  await deleteDoc(ref("applications", app.id));
+  await deleteDoc(ref("applicationStatus", app.id)).catch(() => {});
+  await logActivity(admin, "SIL", "Başvuru", app.id, app.title);
+  changed();
+  return ok("Başvuru silindi.", "/yonetim/basvurular");
+});
 
 // ═════════════ BAŞVURU DÖNEMLERİ ═════════════
 
-/** "Etiket | zorunlu | ipucu" satırlarını belge listesine çevirir */
 function parseDocs(text: string) {
   const used = new Set<string>();
   return text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
@@ -149,146 +147,138 @@ function parseDocs(text: string) {
   });
 }
 
-export async function savePeriod(_p: ActionResult, fd: FormData): Promise<ActionResult> {
+export const savePeriod = (_p: ActionResult, fd: FormData) => wrap(async () => {
   const category = str(fd, "category");
   if (!["SPOR", "MUZIK", "TIYATRO"].includes(category)) return fail("Kategori seçiniz.");
-  const user = await requireUser(category as Unit);
+  const admin = await requireAdmin(category as Unit);
   const id = str(fd, "id");
   const title = str(fd, "title", 200);
   const startDate = dt(fd, "startDate"), endDate = dt(fd, "endDate");
   if (!title || !startDate || !endDate) return fail("Başlık ve tarihler zorunludur.");
   if (endDate <= startDate) return fail("Bitiş tarihi başlangıçtan sonra olmalıdır.");
-  const docs = parseDocs(str(fd, "documents", 5000));
+  const leagueId = category === "SPOR" ? optStr(fd, "leagueId") : null;
+  const league = leagueId ? await getOne<League>("leagues", leagueId) : null;
   const data = {
     title, category, startDate, endDate, sport: category === "SPOR" ? optStr(fd, "sport") : null, gender: category === "SPOR" ? optStr(fd, "gender") : null,
-    leagueId: category === "SPOR" ? optStr(fd, "leagueId") : null, summary: str(fd, "summary", 400) || title, description: optStr(fd, "description", 5000),
-    requirements: str(fd, "requirements", 5000), requiredDocuments: JSON.stringify(docs), minMembers: int(fd, "minMembers"), maxMembers: int(fd, "maxMembers"),
+    leagueId, leagueName: league?.name ?? null, summary: str(fd, "summary", 400) || title, description: optStr(fd, "description", 5000),
+    requirements: str(fd, "requirements", 5000), requiredDocuments: parseDocs(str(fd, "documents", 5000)), minMembers: int(fd, "minMembers"), maxMembers: int(fd, "maxMembers"),
     minAge: int(fd, "minAge"), maxAge: int(fd, "maxAge"), quota: int(fd, "quota"), fee: optStr(fd, "fee", 100), contactInfo: optStr(fd, "contactInfo", 300), isPublished: bool(fd, "isPublished"),
   };
-  let newId = id;
-  try {
-    if (id) await db.applicationPeriod.update({ where: { id }, data });
-    else {
-      const slug = await uniqueSlug(title, async (s) => !!(await db.applicationPeriod.findUnique({ where: { slug: s } })));
-      newId = (await db.applicationPeriod.create({ data: { ...data, slug } })).id;
-    }
-    await logActivity(user.id, id ? "GUNCELLE" : "OLUSTUR", "Başvuru Dönemi", newId, title);
-  } catch (e) { return fail(prismaMessage(e)); }
-  refresh();
-  if (!id) redirect(`/yonetim/donemler/${newId}`);
-  return ok("Başvuru dönemi güncellendi.");
-}
+  let pid = id;
+  if (id) await updateDoc(ref("periods", id), data);
+  else {
+    pid = await uniqueId("periods", title);
+    await setDoc(ref("periods", pid), { ...data, slug: pid, applicationCount: 0, createdAt: new Date() });
+  }
+  await logActivity(admin, id ? "GUNCELLE" : "OLUSTUR", "Başvuru Dönemi", pid, title);
+  changed();
+  return ok(id ? "Başvuru dönemi güncellendi." : "Başvuru dönemi oluşturuldu.", id ? undefined : `/yonetim/donemler/duzenle?id=${pid}`);
+});
 
-export async function deletePeriod(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser();
+export const deletePeriod = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin();
   const id = str(fd, "id");
-  const count = await db.application.count({ where: { periodId: id } });
-  if (count > 0) return fail(`Bu döneme ait ${count} başvuru var. Önce yayından kaldırmayı tercih edin.`);
-  await db.applicationPeriod.delete({ where: { id } });
-  await logActivity(user.id, "SIL", "Başvuru Dönemi", id);
-  refresh();
-  redirect("/yonetim/donemler");
-}
+  const apps = await getAll<Application>("applications", where("periodId", "==", id));
+  if (apps.length) return fail(`Bu döneme ait ${apps.length} başvuru var. Silmek yerine yayından kaldırın.`);
+  await deleteDoc(ref("periods", id));
+  await logActivity(admin, "SIL", "Başvuru Dönemi", id);
+  changed();
+  return ok("Dönem silindi.", "/yonetim/donemler");
+});
 
 // ═════════════ DUYURU & VİDEO & MESAJ ═════════════
 
-export async function saveAnnouncement(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const user = await requireUser();
+export const saveAnnouncement = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const admin = await requireAdmin();
   const id = str(fd, "id");
   const title = str(fd, "title", 200), content = str(fd, "content", 20000);
   if (!title || !content) return fail("Başlık ve içerik zorunludur.");
-  const current = id ? await db.announcement.findUnique({ where: { id } }) : null;
-  let coverUrl = current?.coverUrl ?? null;
-  try {
-    if (bool(fd, "cover_remove")) coverUrl = null;
-    const f = file(fd, "cover");
-    if (f) coverUrl = await saveImage(f);
-  } catch (e) { return fail(e instanceof UploadError ? e.message : "Görsel yüklenemedi."); }
-  const data = { title, content, coverUrl, excerpt: str(fd, "excerpt", 400) || content.slice(0, 200), category: str(fd, "category") || "GENEL", isPinned: bool(fd, "isPinned"), isPublished: bool(fd, "isPublished"), publishedAt: dt(fd, "publishedAt") ?? new Date() };
-  try {
-    if (id) await db.announcement.update({ where: { id }, data });
-    else {
-      const slug = await uniqueSlug(title, async (s) => !!(await db.announcement.findUnique({ where: { slug: s } })));
-      await db.announcement.create({ data: { ...data, slug } });
-    }
-    await logActivity(user.id, id ? "GUNCELLE" : "OLUSTUR", "Duyuru", id || undefined, title);
-  } catch (e) { return fail(prismaMessage(e)); }
-  refresh();
-  if (!id) redirect("/yonetim/duyurular");
-  return ok("Duyuru güncellendi.");
-}
+  const current = id ? await getOne<{ coverUrl?: string | null }>("announcements", id) : null;
+  const data = { title, content, coverUrl: await imageField(fd, "cover", current?.coverUrl, 1000), excerpt: str(fd, "excerpt", 400) || content.slice(0, 200), category: str(fd, "category") || "GENEL", isPinned: bool(fd, "isPinned"), isPublished: bool(fd, "isPublished"), publishedAt: dt(fd, "publishedAt") ?? new Date() };
+  if (id) await updateDoc(ref("announcements", id), data);
+  else {
+    const aid = await uniqueId("announcements", title);
+    await setDoc(ref("announcements", aid), { ...data, slug: aid });
+  }
+  await logActivity(admin, id ? "GUNCELLE" : "OLUSTUR", "Duyuru", id || undefined, title);
+  changed();
+  return ok(id ? "Duyuru güncellendi." : "Duyuru yayımlandı.", id ? undefined : "/yonetim/duyurular");
+});
 
-export async function deleteAnnouncement(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  await requireUser();
-  await db.announcement.delete({ where: { id: str(fd, "id") } }).catch(() => null);
-  refresh();
+export const deleteAnnouncement = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  await requireAdmin();
+  await deleteDoc(ref("announcements", str(fd, "id")));
+  changed();
   return ok("Silindi.");
-}
+});
 
-export async function saveVideo(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  await requireUser();
+export const saveVideo = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  await requireAdmin();
   const id = str(fd, "id");
   const title = str(fd, "title", 200), youtubeUrl = str(fd, "youtubeUrl", 300);
   if (!title || !youtubeUrl) return fail("Başlık ve YouTube bağlantısı zorunludur.");
   const data = { title, youtubeUrl, category: str(fd, "category") || "GENEL", description: optStr(fd, "description", 1000), isFeatured: bool(fd, "isFeatured") };
-  if (id) await db.video.update({ where: { id }, data }); else await db.video.create({ data });
-  refresh();
+  if (id) await updateDoc(ref("videos", id), data);
+  else await setDoc(newRef("videos"), { ...data, publishedAt: new Date() });
+  changed();
   return ok(id ? "Video güncellendi." : "Video eklendi.");
-}
+});
 
-export async function deleteVideo(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  await requireUser();
-  await db.video.delete({ where: { id: str(fd, "id") } }).catch(() => null);
-  refresh();
+export const deleteVideo = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  await requireAdmin();
+  await deleteDoc(ref("videos", str(fd, "id")));
+  changed();
   return ok("Silindi.");
-}
+});
 
-export async function messageAction(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  await requireUser();
+export const messageAction = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  await requireAdmin();
   const id = str(fd, "id");
-  if (str(fd, "op") === "delete") await db.contactMessage.delete({ where: { id } }).catch(() => null);
-  else await db.contactMessage.update({ where: { id }, data: { isRead: str(fd, "op") !== "unread" } });
-  revalidatePath("/yonetim", "layout");
+  if (str(fd, "op") === "delete") await deleteDoc(ref("messages", id));
+  else await updateDoc(ref("messages", id), { isRead: str(fd, "op") !== "unread" });
+  changed();
   return ok();
-}
+});
 
 // ═════════════ KULLANICILAR ═════════════
 
-export async function saveUser(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const me = await requireSuperAdmin();
+export const saveUser = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const me = await requireSuper();
   const id = str(fd, "id");
   const name = str(fd, "name", 80), email = str(fd, "email", 120).toLowerCase(), password = str(fd, "password", 200);
   if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("Ad ve geçerli e-posta zorunludur.");
-  if (!id && password.length < 8) return fail("Şifre en az 8 karakter olmalıdır.");
-  if (password && password.length < 8) return fail("Şifre en az 8 karakter olmalıdır.");
   const role = str(fd, "role") || "EDITOR", scope = str(fd, "scope") || "ALL";
-  const active = id === me.id ? true : bool(fd, "active");
-  try {
-    if (id) await db.user.update({ where: { id }, data: { name, email, role: id === me.id ? "SUPER_ADMIN" : role, scope, active, ...(password ? { passwordHash: await hashPassword(password) } : {}) } });
-    else await db.user.create({ data: { name, email, role, scope, active: true, passwordHash: await hashPassword(password) } });
-    await logActivity(me.id, id ? "GUNCELLE" : "OLUSTUR", "Kullanıcı", id || undefined, email);
-  } catch (e) { return fail(prismaMessage(e)); }
-  revalidatePath("/yonetim/kullanicilar");
-  return ok(id ? "Kullanıcı güncellendi." : "Kullanıcı oluşturuldu.");
-}
+  if (id) {
+    await updateDoc(ref("admins", id), { name, role: id === me.id ? "SUPER_ADMIN" : role, scope, active: id === me.id ? true : bool(fd, "active") });
+  } else {
+    if (password.length < 8) return fail("Şifre en az 8 karakter olmalıdır.");
+    const sec = secondaryAuth();
+    const cred = await createUserWithEmailAndPassword(sec, email, password);
+    await setDoc(ref("admins", cred.user.uid), { name, email, role, scope, active: true, createdAt: new Date() });
+    await signOut(sec);
+  }
+  await logActivity(me, id ? "GUNCELLE" : "OLUSTUR", "Kullanıcı", id || undefined, email);
+  changed();
+  return ok(id ? "Kullanıcı güncellendi." : "Kullanıcı oluşturuldu. Bu e-posta ve şifreyle giriş yapabilir.");
+});
 
-export async function deleteUser(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const me = await requireSuperAdmin();
+export const deleteUser = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  const me = await requireSuper();
   const id = str(fd, "id");
   if (id === me.id) return fail("Kendi hesabınızı silemezsiniz.");
-  await db.user.delete({ where: { id } }).catch(() => null);
-  revalidatePath("/yonetim/kullanicilar");
-  return ok("Kullanıcı silindi.");
-}
+  await deleteDoc(ref("admins", id));
+  changed();
+  return ok("Yönetici yetkisi kaldırıldı.");
+});
 
-export async function changePassword(_p: ActionResult, fd: FormData): Promise<ActionResult> {
-  const me = await requireUser();
+export const changePassword = (_p: ActionResult, fd: FormData) => wrap(async () => {
+  await requireAdmin();
+  const u = fauth().currentUser;
+  if (!u?.email) return fail("Oturum bulunamadı.");
   const current = str(fd, "current", 200), next = str(fd, "next", 200), again = str(fd, "again", 200);
-  if (!(await bcrypt.compare(current, me.passwordHash))) return fail("Mevcut şifre hatalı.");
   if (next.length < 8) return fail("Yeni şifre en az 8 karakter olmalıdır.");
   if (next !== again) return fail("Yeni şifreler eşleşmiyor.");
-  await db.user.update({ where: { id: me.id }, data: { passwordHash: await hashPassword(next) } });
-  await logActivity(me.id, "SIFRE", "Kullanıcı", me.id);
+  await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, current));
+  await updatePassword(u, next);
   return ok("Şifreniz değiştirildi.");
-}
-
+});

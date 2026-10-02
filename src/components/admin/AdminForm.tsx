@@ -1,6 +1,7 @@
 "use client";
 
 import { startTransition, useActionState, useEffect, useRef, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import type { ActionResult } from "@/lib/form";
 import { cn } from "@/lib/utils";
@@ -13,9 +14,11 @@ export function AdminForm({
 }: { action: Action; children: ReactNode; submitLabel?: string; className?: string; resetOnSuccess?: boolean; compact?: boolean; confirm?: string }) {
   const [state, dispatch, pending] = useActionState<ActionResult, FormData>(action, null);
   const ref = useRef<HTMLFormElement>(null);
+  const router = useRouter();
   useEffect(() => {
     if (state?.ok && resetOnSuccess) ref.current?.reset();
-  }, [state, resetOnSuccess]);
+    if (state?.ok && state.redirect) router.push(state.redirect);
+  }, [state, resetOnSuccess, router]);
   return (
     <form
       ref={ref}
@@ -47,6 +50,10 @@ export function ActionButton({
   action, fields, label, confirm: confirmText, className, icon,
 }: { action: Action; fields: Record<string, string>; label: ReactNode; confirm?: string; className?: string; icon?: ReactNode }) {
   const [state, dispatch, pending] = useActionState<ActionResult, FormData>(action, null);
+  const router = useRouter();
+  useEffect(() => {
+    if (state?.ok && state.redirect) router.push(state.redirect);
+  }, [state, router]);
   return (
     <form
       className="inline-flex items-center gap-2"
