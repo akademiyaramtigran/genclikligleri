@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { SITE } from "@/lib/constants";
 import { LANGS, useLang } from "@/lib/i18n";
 import { ArchBadge, MusicBadge, StageBadge } from "./Logos";
+import { withBase } from "./client";
 
 const SECTIONS = [
   { key: "spor", label: "Spor", href: "/spor", icon: Trophy, on: "bg-dicle-500 text-white", hover: "hover:text-dicle-300" },
@@ -82,7 +83,7 @@ export function Header() {
     <header className={cn("sticky top-0 z-50 border-b border-white/10 text-white backdrop-blur-xl transition-shadow", bar, scrolled && "shadow-lg shadow-black/20")}>
       <div className="container-x flex h-16 items-center gap-3 2xl:gap-4">
         <Link href="/" className="group flex shrink-0 items-center gap-2.5" aria-label="Ana sayfa">
-          {brand ? brand.mark : <Logo />}
+          {brand ? brand.mark : <Logo size={42} />}
           <span className="hidden leading-none sm:block">
             <span className={cn("block text-lg uppercase tracking-wider", section === "tiyatro" ? "font-stage tracking-wide" : section === "muzik" ? "font-music text-base font-bold" : "font-display font-semibold")}>{brand ? t(brand.top) : "Diyarbakır"}</span>
             <span className="block text-[10px] font-semibold uppercase tracking-[0.25em] text-white/50">{brand ? t(brand.bottom) : t("Gençlik Organizasyonları")}</span>
@@ -182,20 +183,20 @@ export function Header() {
   );
 }
 
-export function Logo({ size = 38 }: { size?: number }) {
-  // Sur burçlarından esinlenen amblem
+/** Organizasyonun genel logosu (amblem). Koyu zeminde "acik" (beyaz kale), açık zeminde orijinal renkler. */
+export function Logo({ size = 38, variant = "dark", className }: { size?: number; variant?: "dark" | "light"; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden className="shrink-0">
-      <defs>
-        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#2dd4bf" />
-          <stop offset=".5" stopColor="#d946ef" />
-          <stop offset="1" stopColor="#fbbf24" />
-        </linearGradient>
-      </defs>
-      <rect x="1" y="1" width="38" height="38" rx="11" fill="#121622" stroke="url(#lg)" strokeWidth="2" />
-      <path d="M9 30V15h4v-3h3v3h3v-4h2v4h3v-3h3v3h4v15h-6v-6a2.5 2.5 0 0 0-5 0v6H9Z" fill="url(#lg)" />
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={withBase(variant === "dark" ? "/brand/amblem-acik.png" : "/brand/amblem.png")} alt="Diyarbakır Gençlik Organizasyonları" width={size} height={size}
+      className={cn("shrink-0 object-contain", className)} style={{ width: size, height: size }} />
+  );
+}
+
+/** Tam logo (amblem + yazı) — Hakkımızda, büyük alanlar */
+export function FullLogo({ variant = "light", className }: { variant?: "dark" | "light"; className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={withBase(variant === "dark" ? "/brand/logo-acik.png" : "/brand/logo.png")} alt="Diyarbakır Gençlik Organizasyonları" className={cn("object-contain", className)} />
   );
 }
 

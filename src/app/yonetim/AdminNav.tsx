@@ -61,7 +61,7 @@ export function AdminNav({ user, counts }: { user: { name: string; role: string;
   const nav = (
     <nav className="flex h-full flex-col">
       <Link href="/yonetim" className="flex items-center gap-2.5 px-5 py-5">
-        <Logo size={34} />
+        <Logo size={40} />
         <span className="leading-none"><span className="block font-display text-base font-semibold uppercase tracking-wider text-white">Yönetim</span><span className="text-[10px] uppercase tracking-[0.2em] text-white/40">Gençlik Organizasyonları</span></span>
       </Link>
       <div className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">

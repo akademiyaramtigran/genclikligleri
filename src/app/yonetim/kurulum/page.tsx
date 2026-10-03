@@ -24,7 +24,7 @@ export default function SetupPage() {
   return (
     <div className="bg-basalt-wall flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg">
-        <div className="mb-8 flex items-center justify-center gap-3 text-white"><Logo size={44} /><span className="font-display text-2xl font-semibold uppercase tracking-wider">İlk Kurulum</span></div>
+        <div className="mb-8 flex items-center justify-center gap-3 text-white"><Logo size={64} /><span className="font-display text-2xl font-semibold uppercase tracking-wider">İlk Kurulum</span></div>
         <div className="card p-8">
           {!firebaseReady && <p className="text-sm text-red-600">Firebase yapılandırması eksik.</p>}
           {firebaseReady && done === undefined && <Loader2 className="mx-auto h-6 w-6 animate-spin text-basalt-400" />}

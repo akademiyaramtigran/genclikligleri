@@ -71,7 +71,7 @@ Menüler, butonlar, form etiketleri, durumlar, ay ve gün adları çevrilir. Yö
 > Kurmancî ve Zazakî çevirilerin anadili konuşan biri tarafından gözden geçirilmesi önerilir.
 
 ### Bölüm amblemleri
-Lig/spor alanlarında **Üç Kemer** (On Gözlü Köprü + Dicle), müzikte ses dalgası, tiyatroda maske, Genç Kalemler'de kalem ucu amblemi kullanılır (`src/components/Logos.tsx`). Ana logo `src/components/Header.tsx` içindeki `Logo` bileşenidir.
+Lig/spor alanlarında **Üç Kemer** (On Gözlü Köprü + Dicle), müzikte ses dalgası, tiyatroda maske, Genç Kalemler'de kalem ucu amblemi kullanılır (`src/components/Logos.tsx`). Organizasyonun genel logosu `public/brand/` klasöründedir (`amblem.png` açık zemin, `amblem-acik.png` koyu zemin, `logo.png` / `logo-acik.png` yazılı tam logo, `ikon.png`); `Logo` ve `FullLogo` bileşenleri (`src/components/Header.tsx`) bunları kullanır. Tarayıcı simgesi `src/app/icon.png`.
 
 ### Puanlama (otomatik)
 Futbol G3-B1-M0 · Basketbol G2-M1 · Voleybol 3-0/3-1→3P, 3-2→2P, 2-3→1P · Hentbol G2-B1-M0 · ceza puanı desteği

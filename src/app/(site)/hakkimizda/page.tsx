@@ -5,6 +5,7 @@ import { Drama, Heart, Music2, Scale, Trophy, Users } from "lucide-react";
 import { countOf } from "@/lib/data";
 import { useData, useTitle } from "@/lib/hooks";
 import { PageHero, StatTile } from "@/components/ui";
+import { FullLogo } from "@/components/Header";
 
 
 import { useT } from "@/lib/i18n";
@@ -22,6 +23,19 @@ export default function AboutPage() {
     <>
       <PageHero eyebrow={t("Organizasyon")} title={t("Hakkımızda")} description="Diyarbakır Gençlik Organizasyonları; şehrin gençlerini spor, müzik ve tiyatro etrafında bir araya getiren, tek merkezden yönetilen şehir çapında bir gençlik platformudur." />
       <div className="container-x space-y-12 py-12">
+        <div className="grid items-center gap-8 rounded-3xl bg-[#f6f3ec] p-8 ring-1 ring-basalt-200/70 md:grid-cols-[18rem_1fr]">
+          <FullLogo className="mx-auto w-64" />
+          <div>
+            <h2 className="font-display text-2xl font-semibold uppercase tracking-wide text-[#1c3752]">{t("Logomuz")}</h2>
+            <p className="mt-2 leading-relaxed text-basalt-700">{t("Diyarbakır surlarının kapısından yükselen üç dal, organizasyonun üç alanını temsil eder: koşan sporcu ile spor, sol anahtarı ile müzik, kemer ve maske ile tiyatro. Hepsi aynı kökten, şehrin tarihi surlarından büyür.")}</p>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
+              <span className="rounded-full bg-[#8b2346] px-3 py-1 text-white">{t("Spor")}</span>
+              <span className="rounded-full bg-[#2a9d9b] px-3 py-1 text-white">{t("Müzik")}</span>
+              <span className="rounded-full bg-[#e0a93a] px-3 py-1 text-[#1c3752]">{t("Tiyatro")}</span>
+              <span className="rounded-full bg-[#1c3752] px-3 py-1 text-white">Diyarbakır</span>
+            </div>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatTile label={t("Takım")} value={teams} /><StatTile label={t("Sporcu")} value={players} /><StatTile label={t("Müzisyen / Grup")} value={contestants} /><StatTile label={t("Tiyatro Topluluğu")} value={groups} />
         </div>

@@ -7,6 +7,7 @@ import { countOf, getActiveLeagues, getAnnouncements, getHeadline, getHighlights
 import { useData } from "@/lib/hooks";
 import { SPORT_LIST, SPORTS, CATEGORIES, ANNOUNCEMENT_CATEGORIES, HIGHLIGHT_KINDS, sportDef } from "@/lib/constants";
 import { HeadlineHero, HighlightCard, PostCard } from "@/components/content";
+import { FullLogo, Logo } from "@/components/Header";
 import { periodState, daysLeft } from "@/lib/periods";
 import { cn, formatDate, formatShortDate, formatTime, formatWeekday } from "@/lib/utils";
 import { Badge, SectionHeader, TeamCrest, Avatar } from "@/components/ui";
@@ -81,10 +82,21 @@ export default function HomePage() {
         <div className="pointer-events-none absolute bottom-0 left-1/2 h-72 w-[40rem] -translate-x-1/2 rounded-full bg-amber-500/10 blur-[100px]" />
 
         <div className={cn("container-x relative pb-14", headline ? "pt-10" : "pt-12 sm:pt-20")}>
-          {!headline && <div className="max-w-3xl animate-fade-up">
+          {/* Organizasyon kimliği */}
+          {headline && (
+            <div className="mb-8 flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+              <Logo size={88} />
+              <div>
+                <p className="font-display text-3xl font-semibold uppercase tracking-wide sm:text-4xl">Diyarbakır</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-white/60">{t("Gençlik Organizasyonları")}</p>
+                <p className="mt-2 text-sm text-white/70">{t("Spor · Müzik · Tiyatro · Genç Kalemler")}</p>
+              </div>
+            </div>
+          )}
+          {!headline && <div className="grid items-center gap-10 lg:grid-cols-[1fr_auto]"><div className="max-w-3xl animate-fade-up">
             <Badge tone="dark" dot className="mb-5">{t("2026-2027 Sezonu Devam Ediyor")}</Badge>
             <h1 className="font-display text-5xl font-semibold uppercase leading-[0.95] tracking-wide text-balance sm:text-7xl">
-              {t("Şehrin gençliği")} <span className="bg-gradient-to-r from-dicle-300 via-fuchsia-400 to-amber-300 bg-clip-text text-transparent">{t("tek sahada")}</span>
+              {t("Şehrin gençliği")} <span className="bg-gradient-to-r from-[#e0577f] via-[#3cc4c0] to-[#f0bf54] bg-clip-text text-transparent">{t("tek sahada")}</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg text-white/70">
               {t("Diyarbakır'ın 17 ilçesinden gençler; futbol, basketbol, voleybol ve hentbol liglerinde, müzik yarışmasında ve tiyatro festivalinde buluşuyor.")}
@@ -93,7 +105,8 @@ export default function HomePage() {
               <Link href="/spor" className="btn bg-white px-6 py-3 text-basalt-950 hover:bg-dicle-300">{t("Lig Merkezi")} <ArrowRight className="h-4 w-4" /></Link>
               <Link href="/basvuru" className="btn border border-white/20 bg-white/5 px-6 py-3 text-white hover:bg-white/10">{t("Başvuru Yap")}</Link>
             </div>
-          </div>}
+          </div>
+          <FullLogo variant="dark" className="mx-auto hidden w-72 drop-shadow-2xl lg:block xl:w-80" /></div>}
 
           {/* Üç ana bölüm */}
           <div className={cn("grid gap-4 md:grid-cols-3", !headline && "mt-14")}>

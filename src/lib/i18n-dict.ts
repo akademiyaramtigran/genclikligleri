@@ -517,6 +517,9 @@ export const DICT: Record<string, [string, string]> = {
   "Teknik İhtiyaçlar (ışık, ses, dekor)": ["Pêdiviyên Teknîkî (ronahî, deng, dekor)", "Hewcedarîyê Teknîkî (roşnî, veng, dekor)"],
 
   // ───── Manşet / öne çıkanlar / Gençliğin Sesi / arşiv / gönüllü ─────
+  "Spor · Müzik · Tiyatro · Genç Kalemler": ["Werziş · Muzîk · Şano · Pênûsên Ciwan", "Spor · Muzîk · Şano · Qelemê Ciwanan"],
+  "Logomuz": ["Logoya me", "Logoyê ma"],
+  "Diyarbakır surlarının kapısından yükselen üç dal, organizasyonun üç alanını temsil eder: koşan sporcu ile spor, sol anahtarı ile müzik, kemer ve maske ile tiyatro. Hepsi aynı kökten, şehrin tarihi surlarından büyür.": ["Sê şaxên ku ji deriyê sûrên Amedê bilind dibin, sê qadên rêxistinê temsîl dikin: bi werzişvanê ku direve werziş, bi kilîta sol muzîk, bi kemer û maskê şano. Hemû ji heman kokê, ji sûrên dîrokî yên bajêr mezin dibin.", "Hîrê çiqê ke keberê sûrê Amedî ra berz benê, hîrê cayê organîzasyonî temsîl kenê: bı sporkero ke vazdano spor, bı kilîta sol muzîk, bı kemer û maske şano. Pêro yew koke ra, sûrê sûkî yê tarîxî ra gırd benê."],
   "Keşfet": ["Keşf bike", "Keşf bike"],
   "Akışa Git": ["Here herikînê", "Şo herikîyayîş"],
   "Bağlantı kopyalandı": ["Girêdan hate kopîkirin", "Grêdayîş kopya bî"],
