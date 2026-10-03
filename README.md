@@ -2,7 +2,7 @@
 
 Diyarbakır'ın 17 ilçesindeki gençlik organizasyonunu **tek bir platformda** yöneten web sitesi:
 
-- **Spor:** Futbol, basketbol, voleybol, hentbol — **erkek ve kadın** ligleri; puan durumu, fikstür, krallık, oyuncu profilleri, YouTube maç videoları
+- **Spor:** Futbol, basketbol, voleybol, hentbol — **erkek ve kadın** ligleri; puan durumu, fikstür, istatistik liderleri, oyuncu profilleri, YouTube maç videoları
 - **Müzik:** “Genç Sesler” yarışması — turlar, jüri puanı, halk oylaması
 - **Tiyatro:** Gençlik Tiyatro Festivali — gün gün program, oyunlar, topluluklar, ödüller
 - **Başvurular:** Dönemli başvurular, şartlar, belge yükleme, takip kodu
@@ -47,7 +47,7 @@ Sonraki yöneticileri panelden **Kullanıcılar** bölümünde eklersiniz (Spor 
 | Lig Merkezi (Erkek / Kadın geçişi) | `/spor?cinsiyet=kadin` |
 | Lig (puan durumu, fikstür, istatistik, disiplin, kurallar) | `/spor/lig?s=…` |
 | Takım / Oyuncu / Maç (YouTube videosu) | `/spor/takim?s=…`, `/spor/oyuncu?s=…`, `/spor/mac?id=…` |
-| Fikstür, Krallık, Takımlar, Oyuncular | `/spor/fikstur`, `/spor/krallik`, … |
+| Fikstür, İstatistikler, Takımlar, Oyuncular | `/spor/fikstur`, `/spor/istatistik`, … |
 | Müzik yarışması + halk oylaması (günde 1 oy) | `/muzik` |
 | Tiyatro festivali programı (Bazalt Afiş tasarımı) | `/tiyatro` |
 | Genç Kalemler oyun yazarlığı yarışması (Türkçe · Kurmancî · Zazakî) | `/tiyatro/yazarlik` |
@@ -58,7 +58,7 @@ Sonraki yöneticileri panelden **Kullanıcılar** bölümünde eklersiniz (Spor 
 - **Manşet:** Duyurularda "Ana sayfa manşeti" işaretlenen en yeni haber, ana sayfanın en üstünde büyük fotoğrafla gösterilir.
 - **Haftanın Öne Çıkanları** (`/yonetim/one-cikanlar`): haftanın oyuncusu, haftanın sanatçısı, haftanın centilmenlik hareketi; paylaşım görseli indirilebilir.
 - **Gençliğin Sesi** (`/gencligin-sesi`, yönetim `/yonetim/gencligin-sesi`): röportaj, köşe yazısı (Dijital Dergi), fotoğraf ve haber akışı.
-- **Sezon Arşivi** (`/spor/arsiv`): geçmiş sezonların şampiyonları, kürsüleri, krallık liderleri.
+- **Sezon Arşivi** (`/spor/arsiv`): geçmiş sezonların şampiyonları, kürsüleri, istatistik liderleri.
 - **Hakem & Gönüllü** başvuru kategorisi; onaylananlar `/yonetim/gonulluler` havuzuna düşer.
 - **Paylaşım görselleri** (maç, puan durumu, öne çıkanlar) ve **takvime ekle** (.ics: maç, takım fikstürü, oyun gösterimleri).
 - **E-posta kutusu** (`/yonetim/e-posta`): başvuru durumu değişince e-posta `mail` koleksiyonuna yazılır. Gönderim için Firebase Blaze planı + "Trigger Email" eklentisi bağlanmalıdır (demo modunda yalnızca sıraya alınır).

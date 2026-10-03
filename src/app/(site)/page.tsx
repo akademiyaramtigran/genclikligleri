@@ -243,7 +243,7 @@ export default function HomePage() {
 
       {/* ───────────── KRALLIK ───────────── */}
       <section className="container-x pt-16">
-        <SectionHeader eyebrow={t("Krallık Yarışı")} title={t("Ligin Yıldızları")} action={<Link href="/spor/krallik" className="btn-outline">{t("Tüm Sıralamalar")} <ArrowRight className="h-4 w-4" /></Link>} />
+        <SectionHeader eyebrow={t("İstatistikler")} title={t("Ligin Yıldızları")} action={<Link href="/spor/istatistik" className="btn-outline">{t("Tüm Sıralamalar")} <ArrowRight className="h-4 w-4" /></Link>} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {scorerHighlights.map(({ sport, erkek, kadin }) => (
             <div key={sport.key} className="card p-5">

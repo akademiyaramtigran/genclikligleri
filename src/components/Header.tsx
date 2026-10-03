@@ -20,7 +20,7 @@ const SPORT_MENU = [
   { label: "Erkek Ligleri", href: "/spor?cinsiyet=erkek" },
   { label: "Kadın Ligleri", href: "/spor?cinsiyet=kadin" },
   { label: "Fikstür & Sonuçlar", href: "/spor/fikstur" },
-  { label: "Gol / Sayı Krallığı", href: "/spor/krallik" },
+  { label: "İstatistikler", href: "/spor/istatistik" },
   { label: "Takımlar", href: "/spor/takimlar" },
   { label: "Oyuncular", href: "/spor/oyuncular" },
   { label: "Sezon Arşivi", href: "/spor/arsiv" },

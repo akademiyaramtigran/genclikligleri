@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Crown, Medal, Trophy } from "lucide-react";
+import { Medal, Trophy } from "lucide-react";
 import { getLeagues } from "@/lib/data";
 import { useData, useTitle } from "@/lib/hooks";
 import { ErrorBox, PageLoader } from "@/components/client";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, EmptyState, PageHero, TeamCrest } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 
-/** Sezon arşivi: geçmiş sezonların şampiyonları, kürsüleri ve krallık liderleri */
+/** Sezon arşivi: geçmiş sezonların şampiyonları, kürsüleri ve istatistik liderleri */
 export default function ArchivePage() {
   const t = useT();
   useTitle(t("Sezon Arşivi"));
@@ -21,7 +21,7 @@ export default function ArchivePage() {
 
   return (
     <>
-      <PageHero eyebrow={t("Onur Listesi")} title={t("Sezon Arşivi")} description={t("Geçmiş sezonların şampiyonları, kürsüleri ve krallık yarışını kazananlar.")} />
+      <PageHero eyebrow={t("Onur Listesi")} title={t("Sezon Arşivi")} description={t("Geçmiş sezonların şampiyonları, kürsüleri ve istatistik liderleri.")} />
       <div className="container-x space-y-14 py-10">
         {seasons.length === 0 && <EmptyState title="Henüz tamamlanmış sezon yok" description="Sezon kapandığında şampiyonlar burada listelenir." />}
         {seasons.map((season) => {
@@ -46,7 +46,7 @@ export default function ArchivePage() {
                           <Link href={`/spor/takim?s=${champ.slug}`} className="mt-4 flex items-center gap-3">
                             <TeamCrest team={champ} size={56} />
                             <span className="min-w-0">
-                              <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-yellow-200"><Crown className="h-3.5 w-3.5" /> {t("Şampiyon")}</span>
+                              <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-yellow-200"><Trophy className="h-3.5 w-3.5" /> {t("Şampiyon")}</span>
                               <span className="block truncate font-display text-xl font-semibold uppercase">{champ.name}</span>
                               <span className="text-xs text-white/75">{champ.points} {t("puan")} · {champ.won}G {champ.drawn}B {champ.lost}M</span>
                             </span>
