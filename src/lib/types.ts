@@ -50,7 +50,6 @@ export type Match = {
   date: Date; venueId?: string | null; venueName?: string | null; status: string; homeScore: number | null; awayScore: number | null;
   periodScores?: string | null; referee?: string | null; attendance?: number | null; youtubeUrl?: string | null; summary?: string | null;
   mvpPlayerId?: string | null; mvpName?: string | null; events: MatchEvent[]; playerIds: string[];
-  liveStartedAt?: Date | null; liveLog?: { id: string; teamId: string; delta: number; eventId?: string | null }[];
 };
 
 export type RequiredDoc = { key: string; label: string; required: boolean; hint?: string };

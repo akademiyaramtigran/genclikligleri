@@ -200,7 +200,6 @@ export const LEAGUE_STATUS: Record<string, { label: string; tone: string }> = {
 
 export const MATCH_STATUS: Record<string, { label: string; tone: string }> = {
   SCHEDULED: { label: "Planlandı", tone: "slate" },
-  LIVE: { label: "Canlı", tone: "red" },
   FINISHED: { label: "Bitti", tone: "green" },
   POSTPONED: { label: "Ertelendi", tone: "amber" },
   CANCELLED: { label: "İptal", tone: "zinc" },

@@ -42,7 +42,7 @@ export default function Dashboard() {
       teams, players, contestants, plays, logs,
       finished: matches.filter((m) => m.status === "FINISHED").length,
       scheduled: matches.filter((m) => m.status === "SCHEDULED" && m.date >= now).length,
-      awaiting: matches.filter((m) => (m.status === "SCHEDULED" || m.status === "LIVE") && m.date < now).slice(0, 8),
+      awaiting: matches.filter((m) => m.status === "SCHEDULED" && m.date < now).slice(0, 8),
       pendingApps: apps.filter((a) => a.status === "PENDING" || a.status === "IN_REVIEW").length,
       recentApps: apps.slice(0, 6),
       periods: periods.filter((p) => p.endDate >= now).sort((x, y) => x.endDate.getTime() - y.endDate.getTime()).map((p) => ({ ...p, count: apps.filter((a) => a.periodId === p.id).length })),

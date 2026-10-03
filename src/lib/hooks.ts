@@ -47,11 +47,3 @@ export function useTitle(title: string | undefined | null) {
   }, [title]);
 }
 
-/** Canlı içerik: koşul sağlandıkça belirli aralıklarla verileri yeniler */
-export function useAutoRefresh(active: boolean, ms = 20000) {
-  useEffect(() => {
-    if (!active) return;
-    const id = setInterval(() => notifyChange(), ms);
-    return () => clearInterval(id);
-  }, [active, ms]);
-}

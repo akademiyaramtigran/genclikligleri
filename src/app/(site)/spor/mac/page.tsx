@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CalendarDays, Clock, MapPin, Star, Users, Flag } from "lucide-react";
 import { getMatch, getTeamMatches } from "@/lib/data";
-import { useAutoRefresh, useData, useTitle } from "@/lib/hooks";
+import { useData, useTitle } from "@/lib/hooks";
 import { sportDef, GENDERS, MATCH_STATUS, eventDef } from "@/lib/constants";
 import { cn, formatDate, formatTime } from "@/lib/utils";
 import { Avatar, Badge, StatusBadge, TeamCrest } from "@/components/ui";
@@ -30,14 +30,12 @@ function Inner() {
     return { match, h2h };
   }, [id]);
   useTitle(data?.match ? `${data.match.home.name} - ${data.match.away.name}` : undefined);
-  useAutoRefresh(data?.match?.status === "LIVE");
   if (error) return <ErrorBox message={error} />;
   if (data === undefined) return <PageLoader />;
   if (!data) return <NotFoundBox title={t("Maç bulunamadı")} />;
   const { match, h2h } = data;
   const def = sportDef(match.sport);
   const done = match.status === "FINISHED";
-  const live = match.status === "LIVE";
   const homeTeam = { ...match.home, id: match.homeTeamId };
   const awayTeam = { ...match.away, id: match.awayTeamId };
 
@@ -78,10 +76,10 @@ function Inner() {
               <span className="text-xs uppercase tracking-wider text-white/50">{t("Ev Sahibi")}</span>
             </Link>
             <div className="text-center">
-              {done || live ? (
+              {done ? (
                 <>
                   <p className="font-display text-6xl font-bold tabular-nums sm:text-8xl">{match.homeScore}<span className="mx-2 text-white/30">:</span>{match.awayScore}</p>
-                  <div className="mt-2"><StatusBadge map={MATCH_STATUS} value={match.status} dot={live} /></div>
+                  <div className="mt-2"><StatusBadge map={MATCH_STATUS} value={match.status} /></div>
                 </>
               ) : (
                 <>

@@ -27,7 +27,7 @@ function Inner() {
   if (!data) return <PageLoader />;
   const leagues = [...data.leagues].sort((a, b) => a.sport.localeCompare(b.sport) || a.gender.localeCompare(b.gender));
   const now = new Date();
-  let list = data.matches.filter((m) => (!sp.lig || m.leagueId === sp.lig) && (sp.durum === "bekleyen" ? (m.status === "SCHEDULED" || m.status === "LIVE") && m.date < now : !sp.durum || m.status === sp.durum));
+  let list = data.matches.filter((m) => (!sp.lig || m.leagueId === sp.lig) && (sp.durum === "bekleyen" ? m.status === "SCHEDULED" && m.date < now : !sp.durum || m.status === sp.durum));
   if (sp.durum === "FINISHED") list = [...list].reverse();
   const total = list.length;
   const matches = list.slice((page - 1) * PER, page * PER);
@@ -51,7 +51,7 @@ function Inner() {
                 <td className="text-center"><Link href={`/yonetim/maclar/duzenle?id=${m.id}`} className="rounded bg-basalt-100 px-2 py-1 font-display font-bold tabular-nums hover:bg-basalt-200">{m.homeScore ?? "–"} : {m.awayScore ?? "–"}</Link></td>
                 <td><span className="inline-flex items-center gap-2"><TeamCrest team={m.away} size={22} />{m.away.name}</span></td>
                 <td className="text-center text-xs">{m.events.length} {m.youtubeUrl && <PlayCircle className="ml-1 inline h-4 w-4 text-red-500" />}</td>
-                <td><span className="flex items-center gap-2"><StatusBadge map={MATCH_STATUS} value={m.status} />{(m.status === "SCHEDULED" || m.status === "LIVE") && <Link href={`/yonetim/maclar/canli?id=${m.id}`} className="rounded bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white hover:bg-red-700">● Canlı</Link>}</span></td>
+                <td><StatusBadge map={MATCH_STATUS} value={m.status} /></td>
               </tr>
             ))}
           </tbody>

@@ -90,14 +90,14 @@ export async function matchCard(m: Match) {
   const def = sportDef(m.sport);
   const done = m.status === "FINISHED";
   x.textAlign = "center";
-  x.fillStyle = m.status === "LIVE" ? "#ef4444" : "#2dd4bf"; x.font = `700 30px ${body}`;
-  x.fillText((m.status === "LIVE" ? "● CANLI" : done ? "MAÇ SONUCU" : "MAÇ GÜNÜ").split("").join(String.fromCharCode(8202)), W / 2, 150);
+  x.fillStyle = "#2dd4bf"; x.font = `700 30px ${body}`;
+  x.fillText((done ? "MAÇ SONUCU" : "MAÇ GÜNÜ").split("").join(String.fromCharCode(8202)), W / 2, 150);
   x.fillStyle = "rgba(255,255,255,.75)"; x.font = `500 30px ${body}`; x.fillText(`${def.emoji} ${m.leagueName} · ${m.round}. Hafta`, W / 2, 205);
   await crest(x, m.home, 270, 520, 150, display);
   await crest(x, m.away, W - 270, 520, 150, display);
   x.fillStyle = "#fff"; x.font = `600 40px ${display}`;
   for (const [t, cx] of [[m.home, 270], [m.away, W - 270]] as const) wrapText(x, t.name.toLocaleUpperCase("tr-TR"), 360).slice(0, 2).forEach((l, i) => x.fillText(l, cx, 730 + i * 48));
-  if (done || m.status === "LIVE") {
+  if (done) {
     x.font = `700 230px ${display}`; x.fillStyle = "#fff"; x.fillText(`${m.homeScore ?? 0}`, W / 2 - 150, 1010); x.fillText(`${m.awayScore ?? 0}`, W / 2 + 150, 1010);
     x.fillStyle = "rgba(255,255,255,.35)"; x.fillText("-", W / 2, 990);
   } else {

@@ -60,7 +60,6 @@ Sonraki yöneticileri panelden **Kullanıcılar** bölümünde eklersiniz (Spor 
 - **Gençliğin Sesi** (`/gencligin-sesi`, yönetim `/yonetim/gencligin-sesi`): röportaj, köşe yazısı (Dijital Dergi), fotoğraf ve haber akışı.
 - **Sezon Arşivi** (`/spor/arsiv`): geçmiş sezonların şampiyonları, kürsüleri, krallık liderleri.
 - **Hakem & Gönüllü** başvuru kategorisi; onaylananlar `/yonetim/gonulluler` havuzuna düşer.
-- **Canlı maç girişi** (`/yonetim/maclar/canli?id=…`): telefondan tek dokunuşla skor, oyuncu ve kart; site 20-30 sn'de bir kendini yeniler.
 - **Paylaşım görselleri** (maç, puan durumu, öne çıkanlar) ve **takvime ekle** (.ics: maç, takım fikstürü, oyun gösterimleri).
 - **E-posta kutusu** (`/yonetim/e-posta`): başvuru durumu değişince e-posta `mail` koleksiyonuna yazılır. Gönderim için Firebase Blaze planı + "Trigger Email" eklentisi bağlanmalıdır (demo modunda yalnızca sıraya alınır).
 - Önceden demo verisi yüklenmiş sitede yeni demo içerikleri yönetim panosundaki **Demo İçeriklerini Ekle** düğmesiyle eklenir.

@@ -34,7 +34,7 @@ function Inner() {
   const def = sportDef(team.sport);
   const row = league?.summary?.standings.find((r) => r.teamId === team.id);
   const played = matches.filter((m) => m.status === "FINISHED");
-  const next = matches.find((m) => m.status === "SCHEDULED" || m.status === "LIVE");
+  const next = matches.find((m) => m.status === "SCHEDULED");
   const scorers = computeLeaders(matches, def.scoringEvents, new Map([[team.id, team]]), 5).filter((r) => r.teamSlug === team.slug);
   const players = data.players;
 

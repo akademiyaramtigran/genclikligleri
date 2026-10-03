@@ -49,7 +49,7 @@ export default function HomePage() {
   const now = new Date();
   const matchCount = matches.filter((m) => m.status === "FINISHED").length;
   const recent = matches.filter((m) => m.status === "FINISHED").sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 16);
-  const upcoming = matches.filter((m) => (m.status === "SCHEDULED" || m.status === "LIVE") && m.date.getTime() >= now.getTime() - 3 * 3_600_000).slice(0, 8);
+  const upcoming = matches.filter((m) => m.status === "SCHEDULED" && m.date.getTime() >= now.getTime() - 3 * 3_600_000).slice(0, 8);
   const periods = data.periods.filter((p) => p.endDate >= now).sort((a, b) => a.startDate.getTime() - b.startDate.getTime()).slice(0, 4);
   const announcements = data.announcements.slice(0, 4);
   const videos = data.videos.slice(0, 4);

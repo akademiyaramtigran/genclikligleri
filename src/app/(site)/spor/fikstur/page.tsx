@@ -27,7 +27,7 @@ function Inner() {
   let matches = (data ?? []).filter((m) => (!sport || m.sport === sport) && (!gender || m.gender === gender));
   matches = results
     ? matches.filter((m) => m.status === "FINISHED").sort((a, b) => b.date.getTime() - a.date.getTime())
-    : matches.filter((m) => ["SCHEDULED", "LIVE", "POSTPONED"].includes(m.status) && m.date.getTime() >= now - 6 * 3_600_000);
+    : matches.filter((m) => ["SCHEDULED", "POSTPONED"].includes(m.status) && m.date.getTime() >= now - 6 * 3_600_000);
   matches = matches.slice(0, 80);
   const days = new Map<string, Match[]>();
   for (const m of matches) days.set(dayKey(m.date), [...(days.get(dayKey(m.date)) ?? []), m]);
