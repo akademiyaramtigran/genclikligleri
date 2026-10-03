@@ -140,7 +140,7 @@ function Inner() {
             {team.description && <p className="mt-4 text-sm leading-relaxed text-basalt-600">{team.description}</p>}
           </div>
           <div className="card overflow-hidden">
-            <h3 className="border-b border-basalt-100 px-4 py-3 font-semibold">{t("Takımın")} {def.scorerTitle === "Gol Krallığı" ? "Golcüleri" : "Skorerleri"}</h3>
+            <h3 className="border-b border-basalt-100 px-4 py-3 font-semibold">{t("Takımın")} {t(def.scoringEvents[0] === "GOAL" ? "Golcüleri" : "Skorerleri")}</h3>
             <LeaderTable rows={scorers} unit={t(def.scorerUnit)} compact />
           </div>
           <div className="card p-5 text-sm text-basalt-600">

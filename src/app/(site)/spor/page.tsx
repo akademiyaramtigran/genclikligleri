@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Crown, ListOrdered, Shield, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, BarChart3, ListOrdered, Medal, Shield, Users } from "lucide-react";
 import { where } from "firebase/firestore";
 import { countOf, getActiveLeagues, getSeasonMatches } from "@/lib/data";
 import { useData, useTitle } from "@/lib/hooks";
@@ -50,7 +50,7 @@ function Inner() {
             <div>
               <h1 className="font-display text-5xl font-semibold uppercase tracking-wide sm:text-6xl">{g.plural}</h1>
               <p className="mt-3 max-w-xl text-white/70">
-                Diyarbakır&apos;ın {gender === "KADIN" ? "kadın" : "erkek"} gençlik takımlarının mücadele ettiği dört branşın puan durumları, krallık yarışları ve fikstürü.
+                Diyarbakır&apos;ın {gender === "KADIN" ? "kadın" : "erkek"} gençlik takımlarının mücadele ettiği dört branşın puan durumları, istatistikleri ve fikstürü.
               </p>
             </div>
             <GenderSwitch active={gender} hrefFor={(x) => `/spor?cinsiyet=${x}`} />
@@ -67,7 +67,7 @@ function Inner() {
               </a>
             ))}
             <Link href="/spor/fikstur" className="flex shrink-0 items-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm font-semibold ring-1 ring-white/10 hover:bg-white/10"><CalendarDays className="h-5 w-5 text-dicle-300" /> {t("Fikstür")}</Link>
-            <Link href="/spor/krallik" className="flex shrink-0 items-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm font-semibold ring-1 ring-white/10 hover:bg-white/10"><Crown className="h-5 w-5 text-amber-300" /> {t("Krallık")}</Link>
+            <Link href="/spor/istatistik" className="flex shrink-0 items-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm font-semibold ring-1 ring-white/10 hover:bg-white/10"><BarChart3 className="h-5 w-5 text-amber-300" /> {t("İstatistikler")}</Link>
           </nav>
         </div>
       </section>
@@ -100,7 +100,7 @@ function Inner() {
               </div>
               <div className="flex flex-col bg-white">
                 <div className="flex items-center justify-between border-b border-basalt-100 px-4 py-3">
-                  <h3 className="flex items-center gap-2 font-semibold"><Crown className="h-4 w-4 text-amber-500" /> {t(sport.scorerTitle)}</h3>
+                  <h3 className="flex items-center gap-2 font-semibold"><Medal className="h-4 w-4 text-amber-500" /> {t(sport.scorerTitle)}</h3>
                   <Link href={`/spor/lig?s=${league.slug}?sekme=istatistik`} className="text-xs font-medium text-dicle-700">{t("Tümü →")}</Link>
                 </div>
                 <LeaderTable rows={scorers} unit={t(sport.scorerUnit)} compact />

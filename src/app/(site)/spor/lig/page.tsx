@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Crown, Goal, Home, Plane, Scale, Users, Eye } from "lucide-react";
+import { Medal, Goal, Home, Plane, Scale, Users, Eye } from "lucide-react";
 import { getLeague, getLeagueMatches, getTeams } from "@/lib/data";
 import { useData, useTitle } from "@/lib/hooks";
 import { sportDef, GENDERS, LEAGUE_STATUS } from "@/lib/constants";
@@ -111,7 +111,7 @@ function StandingsTab({ league }: { league: League }) {
         {rows.length > 0 && <div className="flex justify-end border-t border-basalt-100 p-3"><ShareImageButton make={() => standingsCard(league.name, rows, league.sport)} filename={`puan-durumu-${league.slug}.png`} title={league.name} /></div>}
       </div>
       <div className="card h-fit overflow-hidden">
-        <h3 className="flex items-center gap-2 border-b border-basalt-100 px-4 py-3 font-semibold"><Crown className="h-4 w-4 text-amber-500" /> {t(def.scorerTitle)}</h3>
+        <h3 className="flex items-center gap-2 border-b border-basalt-100 px-4 py-3 font-semibold"><Medal className="h-4 w-4 text-amber-500" /> {t(def.scorerTitle)}</h3>
         <LeaderTable rows={scorers} unit={t(def.scorerUnit)} compact />
       </div>
     </div>
@@ -190,7 +190,7 @@ function StatsTab({ league }: { league: League }) {
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {boards.map(({ b, rows }) => (
           <div key={b.key} className="card overflow-hidden">
-            <h3 className="flex items-center gap-2 border-b border-basalt-100 px-4 py-3 font-semibold">{b.key === def.scoringEvents[0] && <Crown className="h-4 w-4 text-amber-500" />}{b.leaderboard}</h3>
+            <h3 className="flex items-center gap-2 border-b border-basalt-100 px-4 py-3 font-semibold">{b.key === def.scoringEvents[0] && <Medal className="h-4 w-4 text-amber-500" />}{b.leaderboard}</h3>
             <LeaderTable rows={rows} unit={t(b.label ?? "")} />
           </div>
         ))}

@@ -14,7 +14,7 @@ const COLS = [
     title: "Spor",
     links: [
       ["Erkek Ligleri", "/spor?cinsiyet=erkek"], ["Kadın Ligleri", "/spor?cinsiyet=kadin"], ["Fikstür", "/spor/fikstur"],
-      ["Krallık Yarışı", "/spor/krallik"], ["Takımlar", "/spor/takimlar"], ["Oyuncular", "/spor/oyuncular"], ["Sezon Arşivi", "/spor/arsiv"],
+      ["İstatistikler", "/spor/istatistik"], ["Takımlar", "/spor/takimlar"], ["Oyuncular", "/spor/oyuncular"], ["Sezon Arşivi", "/spor/arsiv"],
     ],
   },
   {
