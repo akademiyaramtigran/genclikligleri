@@ -21,7 +21,7 @@ service cloud.firestore {
     }
     // Başvuru kategorisi → birim (yazarlık yarışmasını tiyatro birimi yönetir)
     function canCat(c) { return can(c) || (c == 'YAZARLIK' && can('TIYATRO')); }
-    function validCategory(c) { return c in ['SPOR', 'MUZIK', 'TIYATRO', 'YAZARLIK']; }
+    function validCategory(c) { return c in ['SPOR', 'MUZIK', 'TIYATRO', 'YAZARLIK', 'GONULLU']; }
     // Bugünün tarihi (İstanbul, UTC+3) — "YYYY-MM-DD" ile karşılaştırma
     function isToday(day) {
       let t = request.time + duration.value(3, 'h');
@@ -120,6 +120,19 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     match /videos/{id} { allow read: if true; allow write: if isAdmin(); }
+    // Haftanın öne çıkanları ve Gençliğin Sesi akışı
+    match /highlights/{id} {
+      allow read: if resource.data.isPublished == true || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /posts/{id} {
+      allow read: if resource.data.isPublished == true || isAdmin();
+      allow write: if isAdmin();
+    }
+    // Hakem & gönüllü havuzu (kişisel veri: yalnızca yöneticiler)
+    match /volunteers/{id} { allow read, write: if isAdmin(); }
+    // E-posta kutusu (Firebase "Trigger Email" eklentisiyle gönderilir)
+    match /mail/{id} { allow read, write: if isAdmin(); }
 
     match /messages/{id} {
       allow create: if signedIn()

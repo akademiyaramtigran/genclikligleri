@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Drama, MapPin, Mic2, Music2, Sparkles, Trophy, Users, Shield, Video as VideoIcon } from "lucide-react";
 import { where } from "firebase/firestore";
-import { countOf, getActiveLeagues, getAnnouncements, getCompetitionData, getCurrentCompetition, getCurrentFestival, getFestivalPlays, getPeriods, getSeasonMatches, getVideos } from "@/lib/data";
+import { countOf, getActiveLeagues, getAnnouncements, getHeadline, getHighlights, getPosts, getCompetitionData, getCurrentCompetition, getCurrentFestival, getFestivalPlays, getPeriods, getSeasonMatches, getVideos } from "@/lib/data";
 import { useData } from "@/lib/hooks";
-import { SPORT_LIST, SPORTS, CATEGORIES, ANNOUNCEMENT_CATEGORIES, sportDef } from "@/lib/constants";
+import { SPORT_LIST, SPORTS, CATEGORIES, ANNOUNCEMENT_CATEGORIES, HIGHLIGHT_KINDS, sportDef } from "@/lib/constants";
+import { HeadlineHero, HighlightCard, PostCard } from "@/components/content";
 import { periodState, daysLeft } from "@/lib/periods";
 import { cn, formatDate, formatShortDate, formatTime, formatWeekday } from "@/lib/utils";
 import { Badge, SectionHeader, TeamCrest, Avatar } from "@/components/ui";
@@ -17,6 +18,7 @@ import { useT } from "@/lib/i18n";
 import { ArchMark, PenMark, StageBadge } from "@/components/Logos";
 
 async function loadHome() {
+  const [headline, highlights, posts] = await Promise.all([getHeadline().catch(() => null), getHighlights().catch(() => []), getPosts().catch(() => [])]);
   const [teamCount, playerCount, leagues, matches, periods, competition, festival, announcements, videos] = await Promise.all([
     countOf("teams", where("status", "==", "ACTIVE")).catch(() => 0),
     countOf("players").catch(() => 0),
@@ -32,7 +34,7 @@ async function loadHome() {
     competition ? getCompetitionData(competition.id) : Promise.resolve(null),
     festival ? getFestivalPlays(festival.id) : Promise.resolve([]),
   ]);
-  return { teamCount, playerCount, leagues, matches, periods, competition, music, festival, plays, announcements, videos };
+  return { teamCount, playerCount, leagues, matches, periods, competition, music, festival, plays, announcements, videos, headline, highlights, posts };
 }
 
 export default function HomePage() {
@@ -40,11 +42,14 @@ export default function HomePage() {
   const { data, error } = useData(loadHome, []);
   if (error) return <ErrorBox message={error} />;
   if (!data) return <PageLoader />;
-  const { teamCount, playerCount, leagues, matches, competition, music, festival, plays } = data;
+  const { teamCount, playerCount, leagues, matches, competition, music, festival, plays, headline } = data;
+  // Her türün (oyuncu / sanatçı / centilmenlik) en yeni kaydı
+  const weekly = Object.keys(HIGHLIGHT_KINDS).map((k) => data.highlights.find((h) => h.kind === k)).filter((h): h is NonNullable<typeof h> => !!h);
+  const feed = data.posts.slice(0, 3);
   const now = new Date();
   const matchCount = matches.filter((m) => m.status === "FINISHED").length;
   const recent = matches.filter((m) => m.status === "FINISHED").sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 16);
-  const upcoming = matches.filter((m) => (m.status === "SCHEDULED" || m.status === "LIVE") && m.date.getTime() >= now.getTime() - 3 * 3_600_000).slice(0, 8);
+  const upcoming = matches.filter((m) => m.status === "SCHEDULED" && m.date.getTime() >= now.getTime() - 3 * 3_600_000).slice(0, 8);
   const periods = data.periods.filter((p) => p.endDate >= now).sort((a, b) => a.startDate.getTime() - b.startDate.getTime()).slice(0, 4);
   const announcements = data.announcements.slice(0, 4);
   const videos = data.videos.slice(0, 4);
@@ -69,13 +74,14 @@ export default function HomePage() {
   return (
     <>
       {/* ───────────── HERO ───────────── */}
+      {headline && <HeadlineHero a={headline} />}
       <section className="bg-basalt-wall relative overflow-hidden text-white">
         <div className="pointer-events-none absolute -left-32 top-10 h-96 w-96 rounded-full bg-dicle-500/25 blur-[100px]" />
         <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-fuchsia-600/20 blur-[110px]" />
         <div className="pointer-events-none absolute bottom-0 left-1/2 h-72 w-[40rem] -translate-x-1/2 rounded-full bg-amber-500/10 blur-[100px]" />
 
-        <div className="container-x relative pb-14 pt-12 sm:pt-20">
-          <div className="max-w-3xl animate-fade-up">
+        <div className={cn("container-x relative pb-14", headline ? "pt-10" : "pt-12 sm:pt-20")}>
+          {!headline && <div className="max-w-3xl animate-fade-up">
             <Badge tone="dark" dot className="mb-5">{t("2026-2027 Sezonu Devam Ediyor")}</Badge>
             <h1 className="font-display text-5xl font-semibold uppercase leading-[0.95] tracking-wide text-balance sm:text-7xl">
               {t("Şehrin gençliği")} <span className="bg-gradient-to-r from-dicle-300 via-fuchsia-400 to-amber-300 bg-clip-text text-transparent">{t("tek sahada")}</span>
@@ -87,10 +93,10 @@ export default function HomePage() {
               <Link href="/spor" className="btn bg-white px-6 py-3 text-basalt-950 hover:bg-dicle-300">{t("Lig Merkezi")} <ArrowRight className="h-4 w-4" /></Link>
               <Link href="/basvuru" className="btn border border-white/20 bg-white/5 px-6 py-3 text-white hover:bg-white/10">{t("Başvuru Yap")}</Link>
             </div>
-          </div>
+          </div>}
 
           {/* Üç ana bölüm */}
-          <div className="mt-14 grid gap-4 md:grid-cols-3">
+          <div className={cn("grid gap-4 md:grid-cols-3", !headline && "mt-14")}>
             <Link href="/spor" className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-dicle-600 to-emerald-900 p-6 ring-1 ring-white/10 transition hover:-translate-y-1">
               <ArchMark size={64} className="absolute -right-2 top-3 opacity-25 transition group-hover:opacity-50" />
               <p className="eyebrow text-dicle-200">{t("Spor")}</p>
@@ -134,24 +140,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Son skorlar bandı */}
-        {recent.length > 0 && (
-          <div className="relative border-t border-white/10 bg-black/30">
-            <div className="mask-fade-x overflow-hidden py-3">
-              <div className="flex w-max animate-marquee gap-8 hover:[animation-play-state:paused]">
-                {[...recent, ...recent].map((m, i) => (
-                  <Link key={`${m.id}-${i}`} href={`/spor/mac?id=${m.id}`} className="flex items-center gap-2 whitespace-nowrap text-sm text-white/80 hover:text-white">
-                    <span className="text-xs">{SPORTS[m.sport as keyof typeof SPORTS]?.emoji}</span>
-                    <span className={cn("rounded px-1.5 text-[10px] font-bold", m.gender === "KADIN" ? "bg-rose-500/20 text-rose-300" : "bg-sky-500/20 text-sky-300")}>{m.gender === "KADIN" ? "K" : "E"}</span>
-                    <span>{m.home.shortName}</span>
-                    <span className="rounded bg-white/10 px-2 font-display font-bold tabular-nums">{m.homeScore}-{m.awayScore}</span>
-                    <span>{m.away.shortName}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </section>
 
       {/* ───────────── AÇIK BAŞVURU ───────────── */}
@@ -171,6 +159,22 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+        </section>
+      )}
+
+      {/* ───────────── HAFTANIN ÖNE ÇIKANLARI ───────────── */}
+      {weekly.length > 0 && (
+        <section className="container-x pt-16">
+          <SectionHeader eyebrow="Oyunlaştırma Paneli" title="Haftanın Öne Çıkanları" description="Haftanın oyuncusu, haftanın sanatçısı ve sahada ya da kuliste birbirine destek olan gençlerin centilmenlik hikâyeleri." action={<Link href="/gencligin-sesi" className="btn-outline">{t("Tümü")} <ArrowRight className="h-4 w-4" /></Link>} />
+          <div className="grid gap-5 md:grid-cols-3">{weekly.map((h) => <HighlightCard key={h.id} h={h} />)}</div>
+        </section>
+      )}
+
+      {/* ───────────── GENÇLİĞİN SESİ ───────────── */}
+      {feed.length > 0 && (
+        <section className="container-x pt-16">
+          <SectionHeader eyebrow="Haber Akışı" title="Gençliğin Sesi" description="Röportajlar, Genç Kalemler'in köşe yazıları, maçlardan ve provalardan anlık fotoğraflar." action={<Link href="/gencligin-sesi" className="btn-outline">{t("Akışa Git")} <ArrowRight className="h-4 w-4" /></Link>} />
+          <div className="grid items-start gap-5 md:grid-cols-3">{feed.map((p) => <PostCard key={p.id} p={p} compact />)}</div>
         </section>
       )}
 
@@ -344,7 +348,7 @@ export default function HomePage() {
               return (
                 <Link key={p.id} href={`/basvuru/detay?s=${p.slug}`} className="card group flex flex-col p-5 transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="flex items-center justify-between">
-                    <Badge tone={p.category === "SPOR" ? "green" : p.category === "MUZIK" ? "fuchsia" : p.category === "YAZARLIK" ? "rose" : "amber"}>{t(cat?.label ?? "")}</Badge>
+                    <Badge tone={p.category === "SPOR" ? "green" : p.category === "MUZIK" ? "fuchsia" : p.category === "YAZARLIK" ? "rose" : p.category === "GONULLU" ? "blue" : "amber"}>{t(cat?.label ?? "")}</Badge>
                     <Badge tone={st === "OPEN" ? "green" : "amber"} dot={st === "OPEN"}>{st === "OPEN" ? t("{n} gün kaldı", { n: daysLeft(p.endDate) }) : t("{d} tarihinde açılıyor", { d: formatShortDate(p.startDate) })}</Badge>
                   </div>
                   <h3 className="mt-4 font-semibold leading-snug text-basalt-900 group-hover:text-dicle-700">{p.title}</h3>

@@ -13,6 +13,9 @@ import { MatchRow } from "@/components/sport";
 import { ErrorBox, NotFoundBox, PageLoader, Suspended, useParam } from "@/components/client";
 
 import { useT } from "@/lib/i18n";
+import { ShareImageButton, CalendarButton, pageUrl } from "@/components/tools";
+import { matchCard } from "@/lib/sharecard";
+import { slugify } from "@/lib/utils";
 export default function MatchPage() {
   return <Suspended><Inner /></Suspended>;
 }
@@ -33,7 +36,6 @@ function Inner() {
   const { match, h2h } = data;
   const def = sportDef(match.sport);
   const done = match.status === "FINISHED";
-  const live = match.status === "LIVE";
   const homeTeam = { ...match.home, id: match.homeTeamId };
   const awayTeam = { ...match.away, id: match.awayTeamId };
 
@@ -74,10 +76,10 @@ function Inner() {
               <span className="text-xs uppercase tracking-wider text-white/50">{t("Ev Sahibi")}</span>
             </Link>
             <div className="text-center">
-              {done || live ? (
+              {done ? (
                 <>
                   <p className="font-display text-6xl font-bold tabular-nums sm:text-8xl">{match.homeScore}<span className="mx-2 text-white/30">:</span>{match.awayScore}</p>
-                  <div className="mt-2"><StatusBadge map={MATCH_STATUS} value={match.status} dot={live} /></div>
+                  <div className="mt-2"><StatusBadge map={MATCH_STATUS} value={match.status} /></div>
                 </>
               ) : (
                 <>
@@ -118,6 +120,10 @@ function Inner() {
             {match.venueName && <Link href={`/tesisler#${match.venueId}`} className="flex items-center gap-1.5 hover:text-white"><MapPin className="h-4 w-4" /> {match.venueName}</Link>}
             {match.referee && <span className="flex items-center gap-1.5"><Flag className="h-4 w-4" /> {t("Hakem:")} {match.referee}</span>}
             {match.attendance && <span className="flex items-center gap-1.5"><Users className="h-4 w-4" /> {match.attendance.toLocaleString("tr-TR")} {t("seyirci")}</span>}
+          </div>
+          <div className="mt-6 flex flex-wrap justify-center gap-2 [&_.btn-outline]:border-white/20 [&_.btn-outline]:bg-white/5 [&_.btn-outline]:text-white [&_.btn-outline:hover]:bg-white/10">
+            <ShareImageButton make={() => matchCard(match)} filename={`mac-${slugify(match.home.shortName)}-${slugify(match.away.shortName)}.png`} title={`${match.home.name} - ${match.away.name}`} />
+            {!done && <CalendarButton filename={`mac-${match.id}`} events={[{ uid: match.id, title: `${def.emoji} ${match.home.name} - ${match.away.name}`, start: match.date, minutes: 120, location: match.venueName, description: match.leagueName, url: pageUrl(`/spor/mac/?id=${match.id}`) }]} />}
           </div>
         </div>
       </section>

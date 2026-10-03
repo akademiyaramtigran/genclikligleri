@@ -33,7 +33,7 @@ function Inner() {
     const lm = data.matches.filter((m) => m.leagueId === league.id);
     return {
       sport: s, league, rows: league.summary?.standings ?? [], scorers: (league.summary?.leaders?.[s.scoringEvents[0]!] ?? []).slice(0, 5),
-      next: lm.filter((m) => m.status === "SCHEDULED" || m.status === "LIVE").slice(0, 3),
+      next: lm.filter((m) => m.status === "SCHEDULED").slice(0, 3),
       played: lm.filter((m) => m.status === "FINISHED").length, total: lm.length,
       players: data.players[data.list.indexOf(league)] ?? 0,
     };

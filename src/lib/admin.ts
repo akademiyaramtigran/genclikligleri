@@ -8,7 +8,7 @@ import { buildLeagueSummary } from "./stats";
 import { slugify } from "./utils";
 import type { AdminUser, League, Match, Team } from "./types";
 
-export type Unit = "SPOR" | "MUZIK" | "TIYATRO";
+export type Unit = "SPOR" | "MUZIK" | "TIYATRO" | "GENEL";
 
 let adminCache: { uid: string; admin: AdminUser } | null = null;
 

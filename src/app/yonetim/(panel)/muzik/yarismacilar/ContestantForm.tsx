@@ -24,7 +24,7 @@ export function ContestantForm({ c }: { c?: MusicContestant }) {
           <SelectField label="Durum" name="status" defaultValue={c?.status} options={Object.fromEntries(Object.entries(CONTESTANT_STATUS).map(([k, v]) => [k, v.label]))} />
         </FormGrid>
         <FormGrid cols={3}><TextField label="Instagram" name="instagram" defaultValue={c?.instagram} /><TextField label="Tanıtım Videosu" name="youtubeUrl" defaultValue={c?.youtubeUrl} /><TextField label="Final Sırası" name="finalRank" type="number" defaultValue={c?.finalRank} /></FormGrid>
-        <FileField label="Fotoğraf" name="photo" current={c?.photoUrl} />
+        <FileField label="Fotoğraf" name="photo" current={c?.photoUrl} accept="image/png,image/jpeg,image/webp" />
         <TextArea label="Biyografi" name="bio" rows={3} defaultValue={c?.bio} />
         <TextArea label="Grup Üyeleri (her satır: Ad Soyad | Rol)" name="members" rows={4} defaultValue={members} />
       </div>

@@ -24,6 +24,23 @@ async function loadApp(id: string) {
   return { admin, app };
 }
 
+/** Başvuru sahibine e-posta (gönderim kutusuna yazılır; Firebase "Trigger Email" eklentisi bağlanınca iletilir) */
+async function queueStatusMail(app: Application, status: string, note?: string | null) {
+  const st = APPLICATION_STATUS[status];
+  if (!st || !app.applicantEmail) return;
+  const trackUrl = typeof window !== "undefined" ? `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/basvuru/takip/?kod=${app.trackingCode}` : "";
+  const text = [
+    `Merhaba ${app.applicantName},`, "",
+    `"${app.title}" başvurunuzun (${app.periodTitle}) durumu güncellendi: ${st.label}.`, st.description,
+    note ? `\nOrganizasyon notu: ${note}` : "", "",
+    `Takip kodu: ${app.trackingCode}`, trackUrl, "", "Diyarbakır Gençlik Organizasyonları",
+  ].filter((l) => l !== null).join("\n");
+  await setDoc(newRef("mail"), {
+    to: app.applicantEmail, kind: "BASVURU_DURUM", refId: app.id, createdAt: new Date(),
+    message: { subject: `Başvurunuz: ${st.label} — ${app.title}`, text, html: text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "<br>") },
+  }).catch(() => {});
+}
+
 async function syncStatus(app: Application, patch: Partial<Application>) {
   const merged = { ...app, ...patch };
   await setDoc(ref("applicationStatus", app.id), { status: merged.status, publicNote: merged.publicNote ?? null, reviewedAt: new Date() }, { merge: true });
@@ -37,6 +54,7 @@ export const updateApplication = (_p: ActionResult, fd: FormData) => wrap(async 
   const patch = { status, adminNote: optStr(fd, "adminNote", 3000), publicNote: optStr(fd, "publicNote", 2000), reviewedBy: admin.name, reviewedAt: new Date() };
   await updateDoc(ref("applications", app.id), patch);
   await syncStatus(app, patch);
+  if (status !== app.status) await queueStatusMail(app, status, patch.publicNote);
   await logActivity(admin, "DURUM", "Başvuru", app.id, `${app.title} → ${APPLICATION_STATUS[status]!.label}`);
   changed();
   return ok("Başvuru güncellendi.");
@@ -72,7 +90,7 @@ export const approveApplication = (_p: ActionResult, fd: FormData) => wrap(async
       let pid = slugify(`${m.firstName} ${m.lastName}`) || "oyuncu";
       if (used.has(pid) || (await getOne("players", pid))) { let i = 2; while (used.has(`${pid}-${i}`) || (await getOne("players", `${pid}-${i}`))) i++; pid = `${pid}-${i}`; }
       used.add(pid);
-      ops.push({ ref: ref("players", pid), data: { slug: pid, firstName: m.firstName ?? "", lastName: m.lastName ?? "", gender, sport, teamId: tid, district: app.district, birthDate: m.birthDate || null, position: m.position || null, jerseyNumber: m.jerseyNumber ? Number(m.jerseyNumber) || null : null, isCaptain: false, status: "ACTIVE", createdAt: new Date() } });
+      ops.push({ ref: ref("players", pid), data: { slug: pid, firstName: m.firstName ?? "", lastName: m.lastName ?? "", photoUrl: m.photo || null, gender, sport, teamId: tid, district: app.district, birthDate: m.birthDate || null, position: m.position || null, jerseyNumber: m.jerseyNumber ? Number(m.jerseyNumber) || null : null, isCaptain: false, status: "ACTIVE", createdAt: new Date() } });
       if (/^\d{11}$/.test(m.identityNo ?? "")) ops.push({ ref: ref("playerPrivate", pid), data: { identityNo: m.identityNo } });
     }
     await batchWrite(ops);
@@ -90,11 +108,19 @@ export const approveApplication = (_p: ActionResult, fd: FormData) => wrap(async
     await setDoc(ref("musicContestants", cid), {
       slug: cid, competitionId: comp.id, name: app.title, type: data.type || "SOLO", genre: data.genre || "Pop", district: app.district, bio: data.bio || null,
       instagram: data.instagram ? (data.instagram.startsWith("http") ? data.instagram : `https://instagram.com/${data.instagram.replace(/^@/, "")}`) : null,
-      youtubeUrl: data.demoUrl || null, status: "ACTIVE", photoUrl: null,
+      youtubeUrl: data.demoUrl || null, status: "ACTIVE", photoUrl: data.logoUrl || null,
       members: members.map((m) => ({ name: `${m.firstName} ${m.lastName}`.trim(), role: m.role ?? "" })), createdAt: new Date(),
     });
     resultId = cid;
     message = `"${app.title}" ${comp.name} ${comp.edition} yarışmacısı olarak eklendi.`;
+  } else if (app.category === "GONULLU") {
+    const vid = newRef("volunteers");
+    await setDoc(vid, {
+      name: app.applicantName, email: app.applicantEmail, phone: app.applicantPhone, district: app.district, role: data.role || "GONULLU",
+      branch: data.branch || null, experience: data.experience || null, applicationId: app.id, active: true, createdAt: new Date(),
+    });
+    resultId = vid.id;
+    message = `${app.applicantName} hakem & gönüllü havuzuna eklendi.`;
   } else if (app.category === "YAZARLIK") {
     const contests = await getAll<WritingContest>("writingContests");
     const contest = contests.find((c) => c.isCurrent) ?? contests[0];
@@ -115,7 +141,7 @@ export const approveApplication = (_p: ActionResult, fd: FormData) => wrap(async
     let gid = groups[0]?.id;
     if (!gid) {
       gid = await uniqueId("theatreGroups", app.title);
-      await setDoc(ref("theatreGroups", gid), { slug: gid, name: app.title, district: app.district, director: data.director || app.applicantName, memberCount: members.length || null });
+      await setDoc(ref("theatreGroups", gid), { slug: gid, name: app.title, district: app.district, director: data.director || app.applicantName, memberCount: members.length || null, logoUrl: data.logoUrl || null });
     }
     const title = data.playTitle || app.title;
     const pid = await uniqueId("theatrePlays", title);
@@ -131,6 +157,7 @@ export const approveApplication = (_p: ActionResult, fd: FormData) => wrap(async
   const patch = { status: "APPROVED", resultEntityId: resultId, reviewedBy: admin.name, reviewedAt: new Date(), publicNote: optStr(fd, "publicNote", 2000) ?? app.publicNote ?? null };
   await updateDoc(ref("applications", app.id), patch);
   await syncStatus(app, patch);
+  await queueStatusMail(app, "APPROVED", patch.publicNote);
   await logActivity(admin, "ONAY", "Başvuru", app.id, message);
   changed();
   return ok(message);
@@ -206,7 +233,7 @@ export const saveAnnouncement = (_p: ActionResult, fd: FormData) => wrap(async (
   const title = str(fd, "title", 200), content = str(fd, "content", 20000);
   if (!title || !content) return fail("Başlık ve içerik zorunludur.");
   const current = id ? await getOne<{ coverUrl?: string | null }>("announcements", id) : null;
-  const data = { title, content, coverUrl: await imageField(fd, "cover", current?.coverUrl, 1000), excerpt: str(fd, "excerpt", 400) || content.slice(0, 200), category: str(fd, "category") || "GENEL", isPinned: bool(fd, "isPinned"), isPublished: bool(fd, "isPublished"), publishedAt: dt(fd, "publishedAt") ?? new Date() };
+  const data = { title, content, coverUrl: await imageField(fd, "cover", current?.coverUrl, 1600), isHeadline: bool(fd, "isHeadline"), kicker: optStr(fd, "kicker", 60), excerpt: str(fd, "excerpt", 400) || content.slice(0, 200), category: str(fd, "category") || "GENEL", isPinned: bool(fd, "isPinned"), isPublished: bool(fd, "isPublished"), publishedAt: dt(fd, "publishedAt") ?? new Date() };
   if (id) await updateDoc(ref("announcements", id), data);
   else {
     const aid = await uniqueId("announcements", title);

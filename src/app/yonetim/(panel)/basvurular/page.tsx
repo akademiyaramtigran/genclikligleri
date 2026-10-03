@@ -22,7 +22,7 @@ function Inner() {
   const user = useAdmin();
   const sp = { durum: useParam("durum"), kategori: useParam("kategori"), donem: useParam("donem"), q: useParam("q"), sayfa: useParam("sayfa") };
   const page = Math.max(1, Number(sp.sayfa) || 1);
-  const allowed = user.role === "SUPER_ADMIN" || user.scope === "ALL" ? ["SPOR", "MUZIK", "TIYATRO", "YAZARLIK"] : unitCategories(user.scope);
+  const allowed = user.role === "SUPER_ADMIN" || user.scope === "ALL" ? Object.keys(CATEGORIES) : unitCategories(user.scope);
   const { data, error } = useData(() => getApplications(user), []);
   if (error) return <ErrorBox message={error} />;
   if (!data) return <PageLoader />;
@@ -56,7 +56,7 @@ function Inner() {
                 <tr key={a.id} className="hover:bg-basalt-50">
                   <td className="font-mono text-xs">{a.trackingCode}</td>
                   <td><Link href={`/yonetim/basvurular/duzenle?id=${a.id}`} className="font-semibold hover:text-dicle-700">{a.title}</Link><p className="text-xs text-basalt-500">{a.applicantName} · {a.district}</p></td>
-                  <td className="max-w-[16rem] truncate text-basalt-600"><Badge tone={a.category === "SPOR" ? "green" : a.category === "MUZIK" ? "fuchsia" : a.category === "YAZARLIK" ? "rose" : "amber"}>{CATEGORIES[a.category as keyof typeof CATEGORIES]?.label}</Badge> {a.periodTitle}</td>
+                  <td className="max-w-[16rem] truncate text-basalt-600"><Badge tone={a.category === "SPOR" ? "green" : a.category === "MUZIK" ? "fuchsia" : a.category === "YAZARLIK" ? "rose" : a.category === "GONULLU" ? "blue" : "amber"}>{CATEGORIES[a.category as keyof typeof CATEGORIES]?.label}</Badge> {a.periodTitle}</td>
                   <td className="text-center tabular-nums">{a.members.length}</td>
                   <td className="text-center"><span className="inline-flex items-center gap-1 text-basalt-600"><FileText className="h-3.5 w-3.5" />{a.documents.length}</span></td>
                   <td className="text-xs text-basalt-500">{formatDateTime(a.createdAt)}</td>

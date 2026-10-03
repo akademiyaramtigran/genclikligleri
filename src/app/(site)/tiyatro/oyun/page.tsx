@@ -12,6 +12,7 @@ import { Badge, KeyValue, StatusBadge } from "@/components/ui";
 import { YouTubeEmbed } from "@/components/YouTubeEmbed";
 import { useT } from "@/lib/i18n";
 
+import { CalendarButton, pageUrl } from "@/components/tools";
 export default function PlayPage() {
   return <Suspended><Inner /></Suspended>;
 }
@@ -90,7 +91,10 @@ function Inner() {
           )}
         </div>
         <aside className="space-y-4">
-          <h2 className="font-stage text-4xl uppercase">{t("Gösterimler")}</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-stage text-4xl uppercase">{t("Gösterimler")}</h2>
+            <CalendarButton className="!rounded-none !border-stone-200/60 !bg-transparent !text-stone-100 hover:!bg-white hover:!text-stage-950" filename={`oyun-${play.slug}`} events={play.shows.filter((s) => s.date > new Date() && s.status !== "CANCELLED").map((s) => ({ uid: s.id, title: `🎭 ${play.title} — ${play.groupName}`, start: s.date, minutes: play.durationMin ?? 90, location: s.venueName, description: s.ticketInfo, url: pageUrl(`/tiyatro/oyun/?s=${play.slug}`) }))} />
+          </div>
           {play.shows.length === 0 && <p className="text-stone-500">{t("Gösterim tarihi henüz açıklanmadı.")}</p>}
           {play.shows.map((s) => (
             <div key={s.id} className="flex flex-col bg-stone-100 p-5 text-stage-950">

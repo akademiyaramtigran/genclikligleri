@@ -26,9 +26,14 @@ const SPORT_MENU = [
   { label: "Gol / Sayı Krallığı", href: "/spor/krallik" },
   { label: "Takımlar", href: "/spor/takimlar" },
   { label: "Oyuncular", href: "/spor/oyuncular" },
+  { label: "Sezon Arşivi", href: "/spor/arsiv" },
 ];
 
+// Üst menüde doğrudan görünenler; diğerleri "Keşfet" altında
+const MAIN_LINKS = ["/gencligin-sesi", "/basvuru"];
+
 const LINKS = [
+  { label: "Gençliğin Sesi", href: "/gencligin-sesi" },
   { label: "Başvurular", href: "/basvuru" },
   { label: "Videolar", href: "/videolar" },
   { label: "Duyurular", href: "/duyurular" },
@@ -81,12 +86,12 @@ export function Header() {
 
   return (
     <header className={cn("sticky top-0 z-50 border-b border-white/10 text-white backdrop-blur-xl transition-shadow", bar, scrolled && "shadow-lg shadow-black/20")}>
-      <div className="container-x flex h-16 items-center gap-4">
+      <div className="container-x flex h-16 items-center gap-3 2xl:gap-4">
         <Link href="/" className="group flex shrink-0 items-center gap-2.5" aria-label="Ana sayfa">
           {brand ? brand.mark : <Logo />}
           <span className="hidden leading-none sm:block">
             <span className={cn("block text-lg uppercase tracking-wider", section === "tiyatro" ? "font-stage tracking-wide" : section === "muzik" ? "font-music text-base font-bold" : "font-display font-semibold")}>{brand ? t(brand.top) : "Diyarbakır"}</span>
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.25em] text-white/50">{brand ? t(brand.bottom) : t("Gençlik Ligleri")}</span>
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.25em] text-white/50">{brand ? t(brand.bottom) : t("Gençlik Organizasyonları")}</span>
           </span>
         </Link>
 
@@ -96,7 +101,7 @@ export function Header() {
             const Icon = s.icon;
             const on = section === s.key;
             return (
-              <Link key={s.key} href={s.href} className={cn("flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition", on ? s.on : cn("text-white/70", s.hover))}>
+              <Link key={s.key} href={s.href} className={cn("flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition 2xl:px-4", on ? s.on : cn("text-white/70", s.hover))}>
                 <Icon className="h-4 w-4" />
                 {t(s.label)}
               </Link>
@@ -104,7 +109,7 @@ export function Header() {
           })}
         </div>
 
-        <nav className="hidden items-center gap-1 lg:flex">
+        <nav className="hidden items-center gap-0.5 xl:flex">
           <div className="group relative">
             <button className="flex items-center gap-1 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-white/70 hover:text-white">
               {t("Lig Merkezi")} <ChevronDown className="h-3.5 w-3.5 transition group-hover:rotate-180" />
@@ -115,11 +120,21 @@ export function Header() {
               ))}
             </div>
           </div>
-          {LINKS.map((l) => (
-            <Link key={l.href} href={l.href} className={cn("whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition", l.href === "/tesisler" && "hidden xl:block", pathname.startsWith(l.href) ? "text-white" : "text-white/70 hover:text-white")}>
+          {LINKS.filter((l) => MAIN_LINKS.includes(l.href)).map((l) => (
+            <Link key={l.href} href={l.href} className={cn("whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition", pathname.startsWith(l.href) ? "text-white" : "text-white/70 hover:text-white")}>
               {t(l.label)}
             </Link>
           ))}
+          <div className="group relative">
+            <button className="flex items-center gap-1 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-white/70 hover:text-white">
+              {t("Keşfet")} <ChevronDown className="h-3.5 w-3.5 transition group-hover:rotate-180" />
+            </button>
+            <div className="invisible absolute right-0 top-full w-56 translate-y-1 rounded-xl border border-white/10 bg-basalt-900 p-1.5 opacity-0 shadow-2xl transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+              {[...LINKS.filter((l) => !MAIN_LINKS.includes(l.href)), { label: "Başvuru Takip", href: "/basvuru/takip" }, { label: "Hakkımızda", href: "/hakkimizda" }, { label: "İletişim", href: "/iletisim" }].map((l) => (
+                <Link key={l.href} href={l.href} className="block rounded-lg px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white">{t(l.label)}</Link>
+              ))}
+            </div>
+          </div>
         </nav>
 
         <div className="ml-auto flex items-center gap-2 md:ml-0">
@@ -136,7 +151,7 @@ export function Header() {
             )}
             {t("Başvur")}
           </Link>
-          <button onClick={() => setOpen((o) => !o)} className="rounded-lg p-2 hover:bg-white/10 lg:hidden" aria-label="Menü" aria-expanded={open}>
+          <button onClick={() => setOpen((o) => !o)} className="rounded-lg p-2 hover:bg-white/10 xl:hidden" aria-label="Menü" aria-expanded={open}>
             {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
@@ -157,7 +172,7 @@ export function Header() {
       </div>
 
       {open && (
-        <div className="max-h-[calc(100vh-7rem)] overflow-y-auto border-t border-white/10 bg-basalt-950 lg:hidden">
+        <div className="max-h-[calc(100vh-7rem)] overflow-y-auto border-t border-white/10 bg-basalt-950 xl:hidden">
           <div className="container-x space-y-6 py-6">
             <div>
               <p className="eyebrow mb-2 text-white/40">{t("Lig Merkezi")}</p>

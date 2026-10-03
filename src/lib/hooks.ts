@@ -43,6 +43,7 @@ export function useData<T>(load: () => Promise<T>, deps: unknown[] = []) {
 
 export function useTitle(title: string | undefined | null) {
   useEffect(() => {
-    if (title) document.title = `${title} | Diyarbakır Gençlik Ligleri`;
+    if (title) document.title = `${title} | Diyarbakır Gençlik Organizasyonları`;
   }, [title]);
 }
+

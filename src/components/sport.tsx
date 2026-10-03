@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { MapPin, PlayCircle } from "lucide-react";
 import type { LeaderRow, Match, StandingRow } from "@/lib/types";
-import { sportDef, MATCH_STATUS } from "@/lib/constants";
+import { sportDef, MATCH_STATUS, SPORTS } from "@/lib/constants";
+import { getSeasonMatches } from "@/lib/data";
+import { useData } from "@/lib/hooks";
+import { firebaseReady } from "@/lib/firebase";
 import { cn, formatShortDate, formatTime, formatWeekday } from "@/lib/utils";
 import { Avatar, Badge, FormBadge, TeamCrest } from "./ui";
 import { useT } from "@/lib/i18n";
@@ -86,7 +89,6 @@ type MatchWithTeams = Pick<Match, "id" | "date" | "status" | "round" | "homeScor
 export function MatchRow({ m, showLeague }: { m: MatchWithTeams; showLeague?: boolean }) {
   const t = useT();
   const done = m.status === "FINISHED";
-  const live = m.status === "LIVE";
   const hw = done && (m.homeScore ?? 0) > (m.awayScore ?? 0);
   const aw = done && (m.awayScore ?? 0) > (m.homeScore ?? 0);
   return (
@@ -100,8 +102,8 @@ export function MatchRow({ m, showLeague }: { m: MatchWithTeams; showLeague?: bo
         <TeamCrest team={m.home} size={26} />
       </div>
       <div className="flex flex-col items-center">
-        {done || live ? (
-          <span className={cn("min-w-[4.5rem] rounded-lg px-2 py-1 text-center font-display text-lg font-bold tabular-nums", live ? "bg-red-600 text-white" : "bg-basalt-900 text-white")}>
+        {done ? (
+          <span className="min-w-[4.5rem] rounded-lg bg-basalt-900 px-2 py-1 text-center font-display text-lg font-bold tabular-nums text-white">
             {m.homeScore ?? 0} - {m.awayScore ?? 0}
           </span>
         ) : (
@@ -214,6 +216,35 @@ export function GenderSwitch({ active, hrefFor, dark = true }: { active: "ERKEK"
           {t(it.label)}
         </Link>
       ))}
+    </div>
+  );
+}
+
+/** Son sonuçlar bandı — yalnızca spor alanında (spor düzeninde) gösterilir */
+export function ScoreTicker() {
+  const t = useT();
+  const { data } = useData(() => (firebaseReady ? getSeasonMatches() : Promise.resolve([])), []);
+  const recent = (data ?? []).filter((m) => m.status === "FINISHED").sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 16);
+  const items = recent;
+  if (items.length === 0) return null;
+  const row = (m: Match, i: number) => (
+    <Link key={`${m.id}-${i}`} href={`/spor/mac?id=${m.id}`} className="flex items-center gap-2 whitespace-nowrap text-sm text-white/80 hover:text-white">
+      <span className="text-xs">{SPORTS[m.sport as keyof typeof SPORTS]?.emoji}</span>
+      <span className={cn("rounded px-1.5 text-[10px] font-bold", m.gender === "KADIN" ? "bg-rose-500/20 text-rose-300" : "bg-sky-500/20 text-sky-300")}>{m.gender === "KADIN" ? t("K") : t("E")}</span>
+      <TeamCrest team={m.home} size={18} className="!ring-0" />
+      <span>{m.home.shortName}</span>
+      <span className="rounded bg-white/10 px-2 font-display font-bold tabular-nums">{m.homeScore ?? 0}-{m.awayScore ?? 0}</span>
+      <span>{m.away.shortName}</span>
+      <TeamCrest team={m.away} size={18} className="!ring-0" />
+    </Link>
+  );
+  return (
+    <div className="border-b border-white/10 bg-basalt-950 text-white">
+      <div className="mask-fade-x overflow-hidden py-2.5">
+        <div className="flex w-max animate-marquee gap-8 hover:[animation-play-state:paused]">
+          {[...items, ...items].map(row)}
+        </div>
+      </div>
     </div>
   );
 }

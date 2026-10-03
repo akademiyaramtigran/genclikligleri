@@ -8,7 +8,7 @@ import { periodState } from "@/lib/periods";
 import { storeFile, FileError, compressImage } from "@/lib/files";
 import { errMessage } from "@/lib/form";
 import { age, dayKey, randomCode } from "@/lib/utils";
-import { DISTRICTS, WRITING_CATEGORIES, WRITING_LANGUAGES } from "@/lib/constants";
+import { DISTRICTS, VOLUNTEER_ROLES, WRITING_CATEGORIES, WRITING_LANGUAGES } from "@/lib/constants";
 import type { MusicCompetition, MusicContestant, Period } from "@/lib/types";
 
 /** Ziyaretçi işlemleri için anonim oturum (kötüye kullanımı sınırlamak için) */
@@ -32,12 +32,15 @@ export type ApplyState =
 export type Member = Record<string, string>;
 
 const s = (fd: FormData, k: string, max = 300) => String(fd.get(k) ?? "").trim().slice(0, max);
+/** Oyuncu fotoğrafı: yalnızca küçültülmüş görsel veri adresi kabul edilir (~30 KB'a kadar) */
+const photoOrEmpty = (v: unknown) => (typeof v === "string" && /^data:image\/(webp|jpeg|png);base64,/.test(v) && v.length < 30_000 ? v : "");
 
 const DATA_FIELDS: Record<string, string[]> = {
   SPOR: ["shortName", "sport", "gender", "coachName", "coachPhone", "primaryColor", "secondaryColor", "homeVenue", "foundedYear", "note"],
   MUZIK: ["type", "genre", "demoUrl", "instagram", "bio", "songs"],
   TIYATRO: ["playTitle", "playwright", "director", "genre", "durationMin", "language", "synopsis", "techNeeds", "videoUrl"],
   YAZARLIK: ["penName", "language", "workCategory", "pageCount", "synopsis", "school"],
+  GONULLU: ["role", "branch", "experience", "availability"],
 };
 
 export async function submitApplication(_prev: ApplyState, fd: FormData): Promise<ApplyState> {
@@ -48,7 +51,7 @@ export async function submitApplication(_prev: ApplyState, fd: FormData): Promis
     if (s(fd, "website")) return { ok: false, error: "Başvuru alınamadı." };
 
     const fieldErrors: Record<string, string> = {};
-    const title = s(fd, "title", 150);
+    const title = period.category === "GONULLU" ? s(fd, "applicantName", 150) : s(fd, "title", 150);
     const applicantName = s(fd, "applicantName", 100);
     const applicantEmail = s(fd, "applicantEmail", 150).toLowerCase();
     const applicantPhone = s(fd, "applicantPhone", 30);
@@ -78,6 +81,7 @@ export async function submitApplication(_prev: ApplyState, fd: FormData): Promis
       if (!data.playwright) fieldErrors.playwright = "Yazar bilgisi zorunludur.";
     }
 
+    if (period.category === "GONULLU" && !(data.role in VOLUNTEER_ROLES)) fieldErrors.role = "Görev seçiniz.";
     if (period.category === "YAZARLIK") {
       if (!data.language || !(data.language in WRITING_LANGUAGES)) fieldErrors.language = "Metnin dilini seçiniz.";
       if (!data.workCategory || !(data.workCategory in WRITING_CATEGORIES)) fieldErrors.workCategory = "Kategori seçiniz.";
@@ -88,8 +92,8 @@ export async function submitApplication(_prev: ApplyState, fd: FormData): Promis
     members = members
       .filter((m) => (m.firstName ?? "").trim() || (m.lastName ?? "").trim())
       .slice(0, 60)
-      .map((m) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, String(v).trim().slice(0, 120)])));
-    const word = period.category === "SPOR" ? "oyuncu" : period.category === "YAZARLIK" ? "yazar" : "üye";
+      .map((m) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, k === "photo" ? photoOrEmpty(v) : String(v).trim().slice(0, 120)]).filter(([, v]) => v !== "")));
+    const word = period.category === "SPOR" ? "oyuncu" : period.category === "YAZARLIK" ? "yazar" : period.category === "GONULLU" ? "kişi" : "üye";
     if (period.minMembers && members.length < period.minMembers) fieldErrors.members = `En az ${period.minMembers} ${word} eklemelisiniz.`;
     if (period.maxMembers && members.length > period.maxMembers) fieldErrors.members = `En fazla ${period.maxMembers} ${word} ekleyebilirsiniz.`;
     const bad = members.findIndex((m) => !m.firstName || !m.lastName);
@@ -107,8 +111,14 @@ export async function submitApplication(_prev: ApplyState, fd: FormData): Promis
       }
     }
 
+    // Logo / fotoğraf: belge olarak değil, küçültülmüş görsel olarak saklanır
+    const logoFile = fd.get("doc_logo");
+    const hasLogo = logoFile instanceof File && logoFile.size > 0;
+    if (hasLogo && !logoFile.type.startsWith("image/")) fieldErrors.doc_logo = "Logo için PNG, JPG veya WEBP görsel seçin.";
+    if (!hasLogo && period.requiredDocuments.some((d) => d.key === "logo" && d.required)) fieldErrors.doc_logo = "Bu belge zorunludur.";
+
     const files: { key: string; label: string; file: File }[] = [];
-    for (const d of period.requiredDocuments) {
+    for (const d of period.requiredDocuments.filter((x) => x.key !== "logo")) {
       const f = fd.get(`doc_${d.key}`);
       if (f instanceof File && f.size > 0) files.push({ key: d.key, label: d.label, file: f });
       else if (d.required) fieldErrors[`doc_${d.key}`] = "Bu belge zorunludur.";
@@ -116,9 +126,7 @@ export async function submitApplication(_prev: ApplyState, fd: FormData): Promis
     if (Object.keys(fieldErrors).length) return { ok: false, error: "Lütfen işaretli alanları kontrol edin.", fieldErrors };
 
     await ensureAuth();
-    // Takım logosu yüklendiyse küçük görsel olarak sakla
-    const logo = files.find((f) => f.key === "logo" && f.file.type.startsWith("image/"));
-    if (logo) data.logoUrl = await compressImage(logo.file, 128).catch(() => "");
+    if (hasLogo) data.logoUrl = await compressImage(logoFile, 192).catch(() => "");
 
     const documents = [];
     for (const f of files) {
@@ -126,8 +134,8 @@ export async function submitApplication(_prev: ApplyState, fd: FormData): Promis
       documents.push({ key: f.key, label: f.label, fileName: stored.fileName, path: stored.id, mimeType: stored.mimeType, size: stored.size });
     }
 
-    let trackingCode = `DGL${randomCode(5)}`;
-    for (let i = 0; i < 5 && (await getDoc(doc(fdb(), "applicationStatus", trackingCode)).catch(() => null))?.exists(); i++) trackingCode = `DGL${randomCode(5)}`;
+    let trackingCode = `DGO${randomCode(5)}`;
+    for (let i = 0; i < 5 && (await getDoc(doc(fdb(), "applicationStatus", trackingCode)).catch(() => null))?.exists(); i++) trackingCode = `DGO${randomCode(5)}`;
 
     const b = writeBatch(fdb());
     b.set(doc(fdb(), "applications", trackingCode), {

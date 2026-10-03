@@ -14,16 +14,16 @@ const COLS = [
     title: "Spor",
     links: [
       ["Erkek Ligleri", "/spor?cinsiyet=erkek"], ["Kadın Ligleri", "/spor?cinsiyet=kadin"], ["Fikstür", "/spor/fikstur"],
-      ["Krallık Yarışı", "/spor/krallik"], ["Takımlar", "/spor/takimlar"], ["Oyuncular", "/spor/oyuncular"],
+      ["Krallık Yarışı", "/spor/krallik"], ["Takımlar", "/spor/takimlar"], ["Oyuncular", "/spor/oyuncular"], ["Sezon Arşivi", "/spor/arsiv"],
     ],
   },
   {
     title: "Kültür & Sanat",
-    links: [["Genç Sesler Müzik Yarışması", "/muzik"], ["Gençlik Tiyatro Festivali", "/tiyatro"], ["Genç Kalemler Yazarlık Yarışması", "/tiyatro/yazarlik"], ["Video Arşivi", "/videolar"], ["Tesisler & Sahneler", "/tesisler"]],
+    links: [["Genç Sesler Müzik Yarışması", "/muzik"], ["Gençlik Tiyatro Festivali", "/tiyatro"], ["Genç Kalemler Yazarlık Yarışması", "/tiyatro/yazarlik"], ["Gençliğin Sesi", "/gencligin-sesi"], ["Video Arşivi", "/videolar"], ["Tesisler & Sahneler", "/tesisler"]],
   },
   {
     title: "Organizasyon",
-    links: [["Başvurular", "/basvuru"], ["Başvuru Takip", "/basvuru/takip"], ["Duyurular", "/duyurular"], ["Hakkımızda", "/hakkimizda"], ["İletişim", "/iletisim"], ["KVKK Aydınlatma Metni", "/kvkk"]],
+    links: [["Başvurular", "/basvuru"], ["Başvuru Takip", "/basvuru/takip"], ["Hakem & Gönüllü Ol", "/basvuru?kategori=gonullu"], ["Duyurular", "/duyurular"], ["Hakkımızda", "/hakkimizda"], ["İletişim", "/iletisim"], ["KVKK Aydınlatma Metni", "/kvkk"]],
   },
 ] as const;
 
@@ -39,8 +39,8 @@ export function Footer() {
           <Link href="/" className="flex items-center gap-3">
             <Logo size={44} />
             <span>
-              <span className="block font-display text-xl font-semibold uppercase tracking-wider">{SITE.name}</span>
-              <span className="block text-xs text-white/50">{SITE.org}</span>
+              <span className="block font-display text-xl font-semibold uppercase tracking-wider">Diyarbakır</span>
+              <span className="block text-xs uppercase tracking-[0.2em] text-white/50">{t("Gençlik Organizasyonları")}</span>
             </span>
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/60">

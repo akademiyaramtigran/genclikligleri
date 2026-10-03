@@ -12,6 +12,7 @@ import { LeaderTable, MatchCard, MatchRow } from "@/components/sport";
 import { ErrorBox, NotFoundBox, PageLoader, Suspended, useParam } from "@/components/client";
 
 import { useT } from "@/lib/i18n";
+import { CalendarButton, pageUrl } from "@/components/tools";
 export default function TeamPage() {
   return <Suspended><Inner /></Suspended>;
 }
@@ -33,7 +34,7 @@ function Inner() {
   const def = sportDef(team.sport);
   const row = league?.summary?.standings.find((r) => r.teamId === team.id);
   const played = matches.filter((m) => m.status === "FINISHED");
-  const next = matches.find((m) => m.status === "SCHEDULED" || m.status === "LIVE");
+  const next = matches.find((m) => m.status === "SCHEDULED");
   const scorers = computeLeaders(matches, def.scoringEvents, new Map([[team.id, team]]), 5).filter((r) => r.teamSlug === team.slug);
   const players = data.players;
 
@@ -121,7 +122,7 @@ function Inner() {
           </div>
 
           <div>
-            <SectionHeader eyebrow={t("Maçlar")} title={t("Fikstür & Sonuçlar")} />
+            <SectionHeader eyebrow={t("Maçlar")} title={t("Fikstür & Sonuçlar")} action={<CalendarButton label="Maçları Takvime Ekle" filename={`${team.slug}-fikstur`} events={matches.filter((m) => m.status === "SCHEDULED" && m.date > new Date()).map((m) => ({ uid: m.id, title: `${m.home.name} - ${m.away.name}`, start: m.date, minutes: 120, location: m.venueName, description: m.leagueName, url: pageUrl(`/spor/mac/?id=${m.id}`) }))} />} />
             <div className="card divide-y divide-basalt-100 overflow-hidden">
               {matches.length === 0 ? <p className="p-6 text-center text-sm text-basalt-500">{t("Maç bulunmuyor")}</p> : matches.map((m) => <MatchRow key={m.id} m={m} />)}
             </div>

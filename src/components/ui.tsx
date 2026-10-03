@@ -60,8 +60,13 @@ export function TeamCrest({
   team, size = 40, className,
 }: { team: { name: string; shortName?: string | null; logoUrl?: string | null; primaryColor?: string | null; secondaryColor?: string | null }; size?: number; className?: string }) {
   if (team.logoUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={team.logoUrl} alt={team.name} width={size} height={size} className={cn("shrink-0 rounded-full object-cover", className)} style={{ width: size, height: size }} />;
+    // Logo kırpılmasın: beyaz yuvarlak zemin üzerinde sığdırılır (saydam PNG/WebP logolar da düzgün görünür)
+    return (
+      <span className={cn("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-black/10", className)} style={{ width: size, height: size, padding: Math.max(1, Math.round(size * 0.1)) }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={team.logoUrl} alt={team.name} className="h-full w-full object-contain" />
+      </span>
+    );
   }
   const label = (team.shortName || initials(team.name)).slice(0, 3);
   return (

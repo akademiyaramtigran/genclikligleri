@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   LayoutDashboard, Inbox, CalendarRange, Megaphone, Video, Mail, Trophy, Shield, Users, CalendarDays, MapPin,
-  Mic2, ListMusic, Drama, Theater, UserCog, History, Menu, X, ExternalLink, LogOut, KeyRound, PenLine,
+  Mic2, ListMusic, Drama, Theater, UserCog, History, Menu, X, ExternalLink, LogOut, KeyRound, PenLine, Send, Star, Newspaper, HandHeart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/Header";
@@ -27,6 +27,12 @@ export function AdminNav({ user, counts }: { user: { name: string; role: string;
       { href: "/yonetim/duyurular", label: "Duyurular", icon: Megaphone },
       { href: "/yonetim/videolar", label: "Videolar", icon: Video },
       { href: "/yonetim/mesajlar", label: "Mesajlar", icon: Mail, badge: counts.messages },
+      { href: "/yonetim/e-posta", label: "E-posta Kutusu", icon: Send },
+    ] },
+    { title: "İçerik", items: [
+      { href: "/yonetim/one-cikanlar", label: "Haftanın Öne Çıkanları", icon: Star },
+      { href: "/yonetim/gencligin-sesi", label: "Gençliğin Sesi", icon: Newspaper },
+      { href: "/yonetim/gonulluler", label: "Hakem & Gönüllüler", icon: HandHeart },
     ] },
     { title: "Spor", unit: "SPOR", items: [
       { href: "/yonetim/ligler", label: "Sezonlar & Ligler", icon: Trophy },
@@ -56,7 +62,7 @@ export function AdminNav({ user, counts }: { user: { name: string; role: string;
     <nav className="flex h-full flex-col">
       <Link href="/yonetim" className="flex items-center gap-2.5 px-5 py-5">
         <Logo size={34} />
-        <span className="leading-none"><span className="block font-display text-base font-semibold uppercase tracking-wider text-white">Yönetim</span><span className="text-[10px] uppercase tracking-[0.2em] text-white/40">Gençlik Ligleri</span></span>
+        <span className="leading-none"><span className="block font-display text-base font-semibold uppercase tracking-wider text-white">Yönetim</span><span className="text-[10px] uppercase tracking-[0.2em] text-white/40">Gençlik Organizasyonları</span></span>
       </Link>
       <div className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
         {visible.map((g) => (

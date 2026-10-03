@@ -27,7 +27,7 @@ function Inner() {
   if (!data) return <PageLoader />;
   const leagues = [...data.leagues].sort((a, b) => a.sport.localeCompare(b.sport) || a.gender.localeCompare(b.gender));
   const now = new Date();
-  let list = data.matches.filter((m) => (!sp.lig || m.leagueId === sp.lig) && (sp.durum === "bekleyen" ? (m.status === "SCHEDULED" || m.status === "LIVE") && m.date < now : !sp.durum || m.status === sp.durum));
+  let list = data.matches.filter((m) => (!sp.lig || m.leagueId === sp.lig) && (sp.durum === "bekleyen" ? m.status === "SCHEDULED" && m.date < now : !sp.durum || m.status === sp.durum));
   if (sp.durum === "FINISHED") list = [...list].reverse();
   const total = list.length;
   const matches = list.slice((page - 1) * PER, page * PER);

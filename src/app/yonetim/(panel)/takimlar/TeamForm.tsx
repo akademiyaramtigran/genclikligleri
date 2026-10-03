@@ -34,7 +34,7 @@ export function TeamForm({ team, leagueId }: { team?: Team; leagueId?: string })
         <FormGrid cols={4}>
           <TextField label="Ana Renk" name="primaryColor" type="color" defaultValue={team?.primaryColor ?? "#0f766e"} />
           <TextField label="İkinci Renk" name="secondaryColor" type="color" defaultValue={team?.secondaryColor ?? "#ffffff"} />
-          <FileField label="Logo" name="logo" current={team?.logoUrl} className="sm:col-span-2" />
+          <FileField label="Takım Logosu" name="logo" current={team?.logoUrl} accept="image/png,image/jpeg,image/webp" hint="Kare, mümkünse saydam arka planlı PNG önerilir. Otomatik küçültülür; logo kırpılmadan yuvarlak zemine sığdırılır." className="sm:col-span-2" />
         </FormGrid>
         <FormGrid>
           <TextField label="Antrenör" name="coachName" defaultValue={team?.coachName} />

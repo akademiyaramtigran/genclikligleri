@@ -16,6 +16,7 @@ import { Badge, StatTile, TeamCrest } from "@/components/ui";
 import { AdminHeader, Panel } from "@/components/admin/fields";
 import { AdminForm } from "@/components/admin/AdminForm";
 import { quickScore } from "@/actions/spor";
+import { DemoExtras } from "./DemoExtras";
 
 export default function Dashboard() {
   const user = useAdmin();
@@ -41,7 +42,7 @@ export default function Dashboard() {
       teams, players, contestants, plays, logs,
       finished: matches.filter((m) => m.status === "FINISHED").length,
       scheduled: matches.filter((m) => m.status === "SCHEDULED" && m.date >= now).length,
-      awaiting: matches.filter((m) => (m.status === "SCHEDULED" || m.status === "LIVE") && m.date < now).slice(0, 8),
+      awaiting: matches.filter((m) => m.status === "SCHEDULED" && m.date < now).slice(0, 8),
       pendingApps: apps.filter((a) => a.status === "PENDING" || a.status === "IN_REVIEW").length,
       recentApps: apps.slice(0, 6),
       periods: periods.filter((p) => p.endDate >= now).sort((x, y) => x.endDate.getTime() - y.endDate.getTime()).map((p) => ({ ...p, count: apps.filter((a) => a.periodId === p.id).length })),
@@ -56,6 +57,7 @@ export default function Dashboard() {
   return (
     <>
       <AdminHeader title={`Hoş geldin, ${user.name.split(" ")[0]} 👋`} description="Organizasyonun genel durumu ve bekleyen işler." actions={<Link href="/yonetim/maclar/yeni" className="btn-primary">+ Maç Ekle</Link>} />
+      {user.role === "SUPER_ADMIN" && <div className="mb-6"><DemoExtras /></div>}
       {yetki === "yok" && <div className="mb-6 flex items-center gap-2 rounded-xl bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-200"><AlertTriangle className="h-4 w-4" /> Bu bölüm için yetkiniz bulunmuyor.</div>}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
