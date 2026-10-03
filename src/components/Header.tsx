@@ -5,10 +5,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, X, Trophy, Music2, Drama, ChevronDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useData } from "@/lib/hooks";
-import { getPeriods } from "@/lib/data";
-import { firebaseReady } from "@/lib/firebase";
-import { periodState } from "@/lib/periods";
 import { SITE } from "@/lib/constants";
 import { LANGS, useLang } from "@/lib/i18n";
 import { ArchBadge, MusicBadge, StageBadge } from "./Logos";
@@ -64,8 +60,6 @@ export function LangSwitch({ className }: { className?: string }) {
 export function Header() {
   const pathname = usePathname();
   const { t } = useLang();
-  const { data: periods } = useData(() => (firebaseReady ? getPeriods() : Promise.resolve([])), []);
-  const openPeriods = (periods ?? []).filter((p) => periodState(p) === "OPEN").length;
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const section = SECTIONS.find((s) => pathname.startsWith(s.href))?.key;
@@ -141,15 +135,6 @@ export function Header() {
           <LangSwitch />
           <Link href="/ara" aria-label={t("Ara")} className="rounded-lg p-2 text-white/70 hover:bg-white/10 hover:text-white">
             <Search className="h-5 w-5" />
-          </Link>
-          <Link href="/basvuru" className="relative hidden items-center gap-2 whitespace-nowrap rounded-full bg-white px-4 py-2 text-sm font-bold text-basalt-950 transition hover:bg-dicle-300 sm:inline-flex">
-            {openPeriods > 0 && (
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              </span>
-            )}
-            {t("Başvur")}
           </Link>
           <button onClick={() => setOpen((o) => !o)} className="rounded-lg p-2 hover:bg-white/10 xl:hidden" aria-label="Menü" aria-expanded={open}>
             {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
