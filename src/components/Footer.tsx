@@ -33,11 +33,11 @@ export function Footer() {
   const dark = /^\/(muzik|tiyatro)/.test(usePathname());
   return (
     <footer className={cn("bg-basalt-wall relative text-white", dark ? "mt-0" : "mt-20")}>
-      <div className="h-1 bg-gradient-to-r from-dicle-400 via-fuchsia-500 to-amber-400" />
+      <div className="h-1 bg-gradient-to-r from-[#8b2346] via-[#2a9d9b] to-[#e0a93a]" />
       <div className="container-x grid gap-10 py-14 lg:grid-cols-[1.3fr_2fr]">
         <div>
           <Link href="/" className="flex items-center gap-3">
-            <Logo size={44} />
+            <Logo size={64} />
             <span>
               <span className="block font-display text-xl font-semibold uppercase tracking-wider">Diyarbakır</span>
               <span className="block text-xs uppercase tracking-[0.2em] text-white/50">{t("Gençlik Organizasyonları")}</span>

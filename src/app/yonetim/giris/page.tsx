@@ -14,7 +14,7 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute bottom-1/4 right-1/4 h-72 w-72 rounded-full bg-fuchsia-500/20 blur-3xl" />
       <div className="relative w-full max-w-md">
         <Link href="/" className="mb-8 flex items-center justify-center gap-3 text-white">
-          <Logo size={48} />
+          <Logo size={76} />
           <span><span className="block font-display text-2xl font-semibold uppercase tracking-wider">Diyarbakır</span><span className="block text-xs uppercase tracking-[0.25em] text-white/50">Gençlik Organizasyonları</span></span>
         </Link>
         <div className="card p-8">
